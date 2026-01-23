@@ -367,12 +367,27 @@ export default function App() {
     );
   }
 
+  const handleBackFromPreview = () => {
+    setPage("capture");
+    // Reset job state so capture countdown overlay can show again.
+    setJobId("");
+    setJobStatus("");
+    setProgress(0);
+    setSpeedFps(0);
+    setJobMessage("");
+    setProcessingStart(0);
+    setProcessingElapsed(0);
+    setPreviewUrl("");
+    setIsBusy(false);
+    setCountdown(0);
+  };
+
   if (page === "preview") {
     return (
       <PreviewPage
         previewUrl={previewUrl}
         downloadUrl={downloadUrl}
-        onBack={() => setPage("capture")}
+        onBack={handleBackFromPreview}
       />
     );
   }
