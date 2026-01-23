@@ -1,16 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import aiFace from "./assets/ai_face.png";
 import "./App.css";
+import PreviewPage from "./PreviewPage.jsx";
 
 export default function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
 
+  const [page, setPage] = useState("intro");
+  const [formData, setFormData] = useState({
+    fullName: "",
+    gender: "",
+    consent: false,
+  });
+  const [formTouched, setFormTouched] = useState(false);
+
   const [status, setStatus] = useState("Ready");
   const [error, setError] = useState("");
 
   const [isBusy, setIsBusy] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [showCaptureModal, setShowCaptureModal] = useState(false);
+  const [pendingCapture, setPendingCapture] = useState("");
 
   const [lastShot, setLastShot] = useState(null);
   const [captureFilename, setCaptureFilename] = useState("");
@@ -20,14 +32,18 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [speedFps, setSpeedFps] = useState(0);
   const [jobMessage, setJobMessage] = useState("");
+  const [processingStart, setProcessingStart] = useState(0);
+  const [processingElapsed, setProcessingElapsed] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState("");
 
   const busyText = useMemo(() => {
-    if (countdown > 0) return `Get ready… ${countdown}`;
+    if (countdown > 0) return `Get ready... ${countdown}`;
     if (isBusy) return status;
     return "";
   }, [countdown, isBusy, status]);
 
   useEffect(() => {
+    if (page !== "capture") return;
     const startCamera = async () => {
       try {
         setError("");
@@ -64,16 +80,8 @@ export default function App() {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
     };
-  }, []);
+  }, [page]);
 
-  const enterFullscreen = async () => {
-    try {
-      const el = document.documentElement;
-      if (el.requestFullscreen) await el.requestFullscreen();
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -132,6 +140,9 @@ export default function App() {
     setProgress(0);
     setSpeedFps(0);
     setJobMessage("Queued");
+    setProcessingStart(Date.now());
+    setProcessingElapsed(0);
+    setPreviewUrl("");
 
     const res = await fetch("http://localhost:8000/start", {
       method: "POST",
@@ -147,15 +158,49 @@ export default function App() {
     const id = json.job_id;
     setJobId(id);
     setStatus("Processing video...");
-    await pollJob(id);
+    const donePayload = await pollJob(id);
+    if (donePayload?.preview_url) {
+      setPreviewUrl(donePayload.preview_url);
+    }
+    setPage("preview");
   };
 
-  const captureAndProcess = async () => {
+  const captureOnly = async () => {
     if (isBusy || countdown > 0) return;
 
     try {
       setError("");
       setIsBusy(true);
+
+      setStatus("Preparing...");
+      await runCountdown(3);
+
+      setStatus("Capturing...");
+      const dataUrl = captureFrameToDataUrl();
+      setLastShot(dataUrl);
+      setPendingCapture(dataUrl);
+      setShowCaptureModal(true);
+
+      setStatus("Photo captured");
+    } catch (e) {
+      console.error(e);
+      setError(e?.message || String(e));
+      setStatus("Error");
+    } finally {
+      setIsBusy(false);
+      if (!error) {
+        setTimeout(() => setStatus("Camera ready"), 1200);
+      }
+    }
+  };
+
+  const processPendingCapture = async () => {
+    if (!pendingCapture || isBusy) return;
+
+    try {
+      setError("");
+      setIsBusy(true);
+      setShowCaptureModal(false);
 
       // reset state job lama
       setCaptureFilename("");
@@ -165,18 +210,11 @@ export default function App() {
       setSpeedFps(0);
       setJobMessage("");
 
-      setStatus("Preparing...");
-      await runCountdown(3);
-
-      setStatus("Capturing...");
-      const dataUrl = captureFrameToDataUrl();
-      setLastShot(dataUrl);
-
       setStatus("Uploading photo...");
       const res = await fetch("http://localhost:8000/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataUrl }),
+        body: JSON.stringify({ image: pendingCapture }),
       });
 
       const json = await res.json();
@@ -187,10 +225,9 @@ export default function App() {
       setCaptureFilename(json.filename);
       setStatus(`Photo saved: ${json.filename}`);
 
-      // AUTO start swap
       await startSwapJob(json.filename);
 
-      setStatus("Done ✅");
+      setStatus("Done");
     } catch (e) {
       console.error(e);
       setError(e?.message || String(e));
@@ -204,122 +241,233 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (!processingStart || jobStatus === "done" || jobStatus === "error") return;
+    const t = setInterval(() => {
+      setProcessingElapsed(Math.floor((Date.now() - processingStart) / 1000));
+    }, 500);
+    return () => clearInterval(t);
+  }, [processingStart, jobStatus]);
+
   const downloadUrl = jobId ? `http://localhost:8000/download/${jobId}` : "";
+  const greetingName = formData.fullName.trim();
+  const elapsedText = `${Math.floor(processingElapsed / 60)
+    .toString()
+    .padStart(2, "0")}:${(processingElapsed % 60).toString().padStart(2, "0")}`;
+
+  const canContinue =
+    formData.fullName.trim().length > 0 && formData.gender && formData.consent;
+  const showNameError = formTouched && !formData.fullName.trim();
+  const showGenderError = formTouched && !formData.gender;
+  const showConsentError = formTouched && !formData.consent;
+
+  const handleContinue = () => {
+    setFormTouched(true);
+    if (!canContinue) return;
+    setPage("capture");
+  };
+
+  if (page === "intro") {
+    return (
+      <div className="introPage">
+        <div className="introGlow introGlowA" />
+        <div className="introGlow introGlowB" />
+        <div className="introCard">
+          <div className="introAvatar">
+            <img className="introAvatarImg" src={aiFace} alt="AI face" />
+          </div>
+          <div className="introStep">Step 1 of 2</div>
+          <div className="introTitle">Data Pengguna</div>
+          <div className="introSub">
+            Isi data singkat sebelum proses capture dimulai.
+          </div>
+
+          <div className="introField">
+            <label className="introLabel" htmlFor="fullName">
+              Nama Lengkap
+            </label>
+            <input
+              id="fullName"
+              className={`introInput ${showNameError ? "isError" : ""}`}
+              type="text"
+              placeholder="Masukkan nama lengkap"
+              value={formData.fullName}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, fullName: e.target.value }))
+              }
+            />
+            {showNameError ? (
+              <div className="introError">Nama lengkap wajib diisi.</div>
+            ) : null}
+          </div>
+
+          <div className="introField">
+            <div className="introLabel">Jenis Kelamin</div>
+            <div className="introRadioRow">
+              <label className="introRadio">
+                <input
+                  type="radio"
+                  name="gender"
+                  value="male"
+                  checked={formData.gender === "male"}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, gender: e.target.value }))
+                  }
+                />
+                <span>Laki-Laki</span>
+              </label>
+              <label className="introRadio">
+                <input
+                  type="radio"
+                  name="gender"
+                  value="female"
+                  checked={formData.gender === "female"}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, gender: e.target.value }))
+                  }
+                />
+                <span>Perempuan</span>
+              </label>
+            </div>
+            {showGenderError ? (
+              <div className="introError">Pilih salah satu.</div>
+            ) : null}
+          </div>
+
+          <div className="introField">
+            <label className="introCheckbox">
+              <input
+                type="checkbox"
+                checked={formData.consent}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, consent: e.target.checked }))
+                }
+              />
+              <span>
+                Saya setuju menggunakan foto saya untuk proses face swap
+              </span>
+            </label>
+            {showConsentError ? (
+              <div className="introError">Anda harus menyetujui syarat ini.</div>
+            ) : null}
+          </div>
+
+          <button
+            className="introButton"
+            type="button"
+            onClick={handleContinue}
+          >
+            Lanjutkan
+          </button>
+          <div className="introHint">
+            Selanjutnya kamu akan mengambil foto untuk proses face swap.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (page === "preview") {
+    return (
+      <PreviewPage
+        previewUrl={previewUrl}
+        downloadUrl={downloadUrl}
+        onBack={() => setPage("capture")}
+      />
+    );
+  }
 
   return (
-    <div className="kiosk">
-      <video ref={videoRef} className="kioskVideo" playsInline muted />
+    <div className="capturePage">
       <canvas ref={canvasRef} style={{ display: "none" }} />
-      <div className="vignette" />
+      <div className="captureHeader">Ambil Foto</div>
+      <div className="captureGreeting">
+        <div className="captureHello">Hi, {greetingName}</div>
+        <div className="captureGuide">Silakan posisikan wajah dalam bingkai</div>
+      </div>
 
-      {/* TOP BAR */}
-      <div className="topBar">
-        <div className="brand">
-          <div className="brandDot" />
-          <div className="brandText">
-            <div className="brandTitle">Face Capture → Face Swap</div>
-            <div className="brandSub">
-              {jobStatus === "running"
-                ? "Processing media1.mp4 with your captured face"
-                : "Capture face, then auto-generate output video"}
-            </div>
-          </div>
-        </div>
-
-        <div className="actions">
-          <button className="btn ghost" onClick={enterFullscreen} disabled={isBusy}>
-            Fullscreen
-          </button>
-          <button
-            className="btn primary"
-            onClick={captureAndProcess}
-            disabled={isBusy || countdown > 0}
-          >
-            {isBusy || countdown > 0 ? "Please wait…" : "Capture & Process"}
-          </button>
+      <div className="frameWrap">
+        <div className="frameShell">
+          <video ref={videoRef} className="frameVideo" playsInline muted />
+          <div className="faceOval" />
         </div>
       </div>
 
-      {/* CENTER GUIDE */}
-      <div className="center">
-        <div className="guideWrap">
-          <div className="guideBox" />
-          <div className="hint">
-            Posisikan wajah di dalam kotak. Saat countdown, <b>diam sebentar</b>.
-          </div>
-        </div>
+      <div className="captureActions">
+        <button className="actionPill" type="button" onClick={() => setPage("intro")}>
+          Kembali
+        </button>
+        <button
+          className="actionMain"
+          type="button"
+          onClick={captureOnly}
+          disabled={isBusy || countdown > 0}
+        >
+          {isBusy || countdown > 0 ? "Tunggu..." : "Ambil Foto"}
+        </button>
+        <button className="actionPill" type="button">
+          Galeri
+        </button>
       </div>
 
-      {/* BOTTOM */}
-      <div className="bottomPanel">
-        <div className="statusCard">
-          <div className="statusRow">
-            <span className={`pill ${error ? "pillRed" : "pillGreen"}`}>
-              {error ? "ERROR" : "READY"}
-            </span>
-            <span className="statusText">{status}</span>
-          </div>
+      <div className="captureStatus">
+        <span className={`pill ${error ? "pillRed" : "pillGreen"}`}>
+          {error ? "ERROR" : "READY"}
+        </span>
+        <span className="statusText">{status}</span>
+      </div>
 
-          {error ? <div className="errorText">{error}</div> : null}
+      {error ? <div className="errorText">{error}</div> : null}
 
-          {captureFilename ? (
-            <div className="savedText">Capture: {captureFilename}</div>
-          ) : null}
-
-          {jobId ? (
-            <div className="savedText">
-              Job: <b>{jobId.slice(0, 8)}</b> • {jobStatus || "-"}
-            </div>
-          ) : null}
-
-          {jobStatus ? (
-            <div className="progressWrap">
-              <div className="progressTop">
-                <div className="progressLabel">{jobMessage || "Working..."}</div>
-                <div className="progressMeta">
-                  {progress}% {speedFps ? `• ${speedFps.toFixed(1)} fps` : ""}
-                </div>
-              </div>
-              <div className="progressBar">
-                <div className="progressFill" style={{ width: `${progress}%` }} />
-              </div>
-            </div>
-          ) : null}
-
-          {jobStatus === "done" ? (
-            <div className="downloadRow">
-              <a className="btn primary" href={downloadUrl} target="_blank" rel="noreferrer">
-                Download Output MP4
-              </a>
-              <button className="btn ghost" onClick={() => window.location.reload()}>
-                New Capture
+      {showCaptureModal ? (
+        <div className="modalOverlay">
+          <div className="modalCard">
+            <div className="modalTitle">Foto berhasil di capture</div>
+            <div className="modalSub">Lanjutkan generate video?</div>
+            {lastShot ? (
+              <img className="modalPreview" src={lastShot} alt="preview" />
+            ) : null}
+            <div className="modalActions">
+              <button
+                className="btn ghost"
+                onClick={() => {
+                  setShowCaptureModal(false);
+                  setPendingCapture("");
+                }}
+              >
+                Ulangi
+              </button>
+              <button className="btn primary" onClick={processPendingCapture}>
+                Lanjutkan
               </button>
             </div>
-          ) : null}
+          </div>
         </div>
+      ) : null}
 
-        <div className="previewCard">
-          <div className="previewTitle">Last shot</div>
-          {lastShot ? (
-            <img className="previewImg" src={lastShot} alt="last shot" />
-          ) : (
-            <div className="previewEmpty">No capture yet</div>
-          )}
-        </div>
-      </div>
-
-      {/* BUSY OVERLAY */}
-      {(isBusy || countdown > 0) && (
+      {(isBusy || countdown > 0) && !jobStatus && (
         <div className="busyOverlay">
           <div className="busyCard">
             <div className="spinner" />
             <div className="busyTitle">{busyText || "Working..."}</div>
             <div className="busySub">
-              {countdown > 0 ? "Hold still…" : "Uploading / Processing…"}
+              {countdown > 0 ? "Hold still..." : "Uploading / Processing..."}
             </div>
           </div>
         </div>
       )}
+
+      {jobStatus && jobStatus !== "done" ? (
+        <div className="processingOverlay">
+          <div className="processingRing" />
+          <div className="processingCard">
+            <div className="processingTitle">Processing video...</div>
+            <div className="processingSub">{jobMessage || "Processing frames..."}</div>
+            <div className="processingTime">Time: {elapsedText}</div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
+
