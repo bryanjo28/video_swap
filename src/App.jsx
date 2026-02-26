@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import aiFace from "./assets/ai_face.png";
 import "./App.css";
+import OutfitSidePanel from "./OutfitSidePanel.jsx";
 import PreviewPage from "./PreviewPage.jsx";
 
 export default function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  const galleryInputRef = useRef(null);
 
-  const [page, setPage] = useState("intro");
+  const [page, setPage] = useState("welcome");
   const [formData, setFormData] = useState({
     fullName: "",
     gender: "",
@@ -23,6 +25,10 @@ export default function App() {
   const [countdown, setCountdown] = useState(0);
   const [showCaptureModal, setShowCaptureModal] = useState(false);
   const [pendingCapture, setPendingCapture] = useState("");
+  const [captureSubmitting, setCaptureSubmitting] = useState(false);
+  const [captureError, setCaptureError] = useState("");
+  const [captureSource, setCaptureSource] = useState("camera");
+  const [selectedFileName, setSelectedFileName] = useState("");
 
   const [lastShot, setLastShot] = useState(null);
   const [captureFilename, setCaptureFilename] = useState("");
@@ -179,6 +185,8 @@ export default function App() {
       const dataUrl = captureFrameToDataUrl();
       setLastShot(dataUrl);
       setPendingCapture(dataUrl);
+      setCaptureSource("camera");
+      setSelectedFileName("");
       setShowCaptureModal(true);
 
       setStatus("Photo captured");
@@ -194,13 +202,60 @@ export default function App() {
     }
   };
 
+  const readFileAsDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Failed to read selected file"));
+      reader.readAsDataURL(file);
+    });
+
+  const handleGalleryClick = () => {
+    if (isBusy || countdown > 0 || captureSubmitting) return;
+    galleryInputRef.current?.click();
+  };
+
+  const handleGalleryFileChange = async (e) => {
+    try {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!file.type?.startsWith("image/")) {
+        throw new Error("File harus berupa gambar.");
+      }
+
+      const maxBytes = 5 * 1024 * 1024;
+      if (file.size > maxBytes) {
+        throw new Error("Ukuran file maksimal 5MB.");
+      }
+
+      const dataUrl = await readFileAsDataUrl(file);
+      setError("");
+      setCaptureError("");
+      setLastShot(dataUrl);
+      setPendingCapture(dataUrl);
+      setCaptureSource("gallery");
+      setSelectedFileName(file.name);
+      setShowCaptureModal(true);
+      setStatus("Gallery photo selected");
+    } catch (err) {
+      const message = err?.message || String(err);
+      setError(message);
+      setStatus("Error");
+    } finally {
+      if (galleryInputRef.current) {
+        galleryInputRef.current.value = "";
+      }
+    }
+  };
+
   const processPendingCapture = async () => {
-    if (!pendingCapture || isBusy) return;
+    if (!pendingCapture || isBusy || captureSubmitting) return;
 
     try {
       setError("");
-      setIsBusy(true);
-      setShowCaptureModal(false);
+      setCaptureError("");
+      setCaptureSubmitting(true);
 
       // reset state job lama
       setCaptureFilename("");
@@ -224,16 +279,20 @@ export default function App() {
 
       setCaptureFilename(json.filename);
       setStatus(`Photo saved: ${json.filename}`);
+      setShowCaptureModal(false);
 
       await startSwapJob(json.filename);
 
       setStatus("Done");
     } catch (e) {
       console.error(e);
-      setError(e?.message || String(e));
+      const message = e?.message || String(e);
+      setError(message);
+      setCaptureError(message);
       setStatus("Error");
-      setJobStatus("error");
+      setJobStatus("");
     } finally {
+      setCaptureSubmitting(false);
       setIsBusy(false);
       if (!error) {
         setTimeout(() => setStatus("Camera ready"), 1200);
@@ -266,6 +325,29 @@ export default function App() {
     if (!canContinue) return;
     setPage("capture");
   };
+
+  if (page === "welcome") {
+    return (
+      <div className="welcomePage">
+        <div className="welcomeGlow welcomeGlowA" />
+        <div className="welcomeGlow welcomeGlowB" />
+        <div className="welcomeCard">
+          <div className="welcomeBadge">AI EXPERIENCE</div>
+          <h1 className="welcomeTitle">Welcome to Face Swap Generator</h1>
+          <p className="welcomeSub">
+            Mulai pengalaman face swap kamu dengan satu klik.
+          </p>
+          <button
+            type="button"
+            className="welcomeButton"
+            onClick={() => setPage("intro")}
+          >
+            Klik Di Sini
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (page === "intro") {
     return (
@@ -368,7 +450,7 @@ export default function App() {
   }
 
   const handleBackFromPreview = () => {
-    setPage("capture");
+    setPage("intro");
     // Reset job state so capture countdown overlay can show again.
     setJobId("");
     setJobStatus("");
@@ -395,16 +477,27 @@ export default function App() {
   return (
     <div className="capturePage">
       <canvas ref={canvasRef} style={{ display: "none" }} />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleGalleryFileChange}
+      />
       <div className="captureHeader">Ambil Foto</div>
       <div className="captureGreeting">
         <div className="captureHello">Hi, {greetingName}</div>
         <div className="captureGuide">Silakan posisikan wajah dalam bingkai</div>
       </div>
 
-      <div className="frameWrap">
-        <div className="frameShell">
-          <video ref={videoRef} className="frameVideo" playsInline muted />
-          <div className="faceOval" />
+      <div className="captureBody">
+        <OutfitSidePanel />
+
+        <div className="frameWrap">
+          <div className="frameShell">
+            <video ref={videoRef} className="frameVideo" playsInline muted />
+            <div className="faceOval" />
+          </div>
         </div>
       </div>
 
@@ -420,7 +513,7 @@ export default function App() {
         >
           {isBusy || countdown > 0 ? "Tunggu..." : "Ambil Foto"}
         </button>
-        <button className="actionPill" type="button">
+        <button className="actionPill" type="button" onClick={handleGalleryClick}>
           Galeri
         </button>
       </div>
@@ -437,8 +530,22 @@ export default function App() {
       {showCaptureModal ? (
         <div className="modalOverlay">
           <div className="modalCard">
-            <div className="modalTitle">Foto berhasil di capture</div>
-            <div className="modalSub">Lanjutkan generate video?</div>
+            <div className="modalTitle">
+              {captureSource === "gallery"
+                ? "Foto galeri siap diupload"
+                : "Foto berhasil di capture"}
+            </div>
+            <div className="modalSub">
+              {captureSource === "gallery"
+                ? "Klik Submit untuk kirim ke backend."
+                : "Lanjutkan generate video?"}
+            </div>
+            {captureSource === "gallery" && selectedFileName ? (
+              <div className="modalMeta">{selectedFileName}</div>
+            ) : null}
+            {captureError ? (
+              <div className="modalError">{captureError}</div>
+            ) : null}
             {lastShot ? (
               <img className="modalPreview" src={lastShot} alt="preview" />
             ) : null}
@@ -448,12 +555,23 @@ export default function App() {
                 onClick={() => {
                   setShowCaptureModal(false);
                   setPendingCapture("");
+                  setCaptureError("");
+                  setSelectedFileName("");
                 }}
+                disabled={captureSubmitting}
               >
                 Ulangi
               </button>
-              <button className="btn primary" onClick={processPendingCapture}>
-                Lanjutkan
+              <button
+                className="btn primary"
+                onClick={processPendingCapture}
+                disabled={captureSubmitting}
+              >
+                {captureSubmitting
+                  ? "Tunggu..."
+                  : captureSource === "gallery"
+                    ? "Submit"
+                    : "Lanjutkan"}
               </button>
             </div>
           </div>
@@ -472,7 +590,7 @@ export default function App() {
         </div>
       )}
 
-      {jobStatus && jobStatus !== "done" ? (
+      {jobStatus === "queued" || jobStatus === "running" ? (
         <div className="processingOverlay">
           <div className="processingRing" />
           <div className="processingCard">

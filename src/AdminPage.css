@@ -1,0 +1,524 @@
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap");
+
+:root {
+  --admin-bg: #edf2ff;
+  --admin-bg-deep: #dbe7ff;
+  --admin-surface: rgba(255, 255, 255, 0.78);
+  --admin-stroke: rgba(32, 64, 138, 0.12);
+  --admin-title: #1a2a57;
+  --admin-text: #324376;
+  --admin-muted: #6677a5;
+  --admin-accent: #2f66ff;
+  --admin-accent-soft: #e0e9ff;
+  --admin-shadow: 0 18px 36px rgba(31, 53, 116, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.adminRoot {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 296px 1fr;
+  gap: 24px;
+  padding: 22px;
+  font-family: "Sora", "Segoe UI", sans-serif;
+  color: var(--admin-text);
+  background:
+    radial-gradient(circle at 8% 12%, #ffffff 0%, rgba(255, 255, 255, 0) 32%),
+    linear-gradient(135deg, var(--admin-bg) 0%, var(--admin-bg-deep) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.adminBackdrop {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(6px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.adminBackdropA {
+  width: 340px;
+  height: 340px;
+  right: -120px;
+  top: -60px;
+  background: radial-gradient(circle, rgba(47, 102, 255, 0.28), rgba(47, 102, 255, 0));
+  animation: adminFloat 11s ease-in-out infinite;
+}
+
+.adminBackdropB {
+  width: 380px;
+  height: 380px;
+  left: 26%;
+  bottom: -220px;
+  background: radial-gradient(circle, rgba(0, 188, 212, 0.22), rgba(0, 188, 212, 0));
+  animation: adminFloat 13s ease-in-out infinite reverse;
+}
+
+.adminSidebar,
+.adminMain {
+  z-index: 1;
+}
+
+.adminSidebar {
+  background: var(--admin-surface);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--admin-stroke);
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: var(--admin-shadow);
+  display: flex;
+  flex-direction: column;
+  animation: slideInLeft 0.55s ease-out;
+}
+
+.adminBrand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.adminBrandBadge {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 800;
+  background: linear-gradient(145deg, #1f65ff, #3db9ff);
+  box-shadow: 0 8px 22px rgba(31, 101, 255, 0.35);
+}
+
+.adminBrandTitle {
+  font-family: "Space Grotesk", "Sora", sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #132650;
+  line-height: 1;
+}
+
+.adminBrandSub {
+  font-size: 12px;
+  color: var(--admin-muted);
+  margin-top: 4px;
+}
+
+.adminProfile {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--admin-stroke);
+  background: rgba(255, 255, 255, 0.86);
+  margin-bottom: 14px;
+}
+
+.adminAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #0e4ee8, #36bcff);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 800;
+}
+
+.adminProfileName {
+  font-weight: 700;
+  color: var(--admin-title);
+  font-size: 14px;
+}
+
+.adminProfileRole {
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+.adminNav {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.adminNavItem {
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--admin-text);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px;
+  cursor: pointer;
+  transition: transform 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.adminNavItem:hover {
+  background: rgba(47, 102, 255, 0.12);
+  transform: translateX(2px);
+}
+
+.adminNavItem.isActive {
+  background: linear-gradient(120deg, #1d63ff, #3ca8ff);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(47, 102, 255, 0.35);
+}
+
+.adminNavIcon {
+  width: 22px;
+  text-align: center;
+  opacity: 0.95;
+}
+
+.adminLogout {
+  margin-top: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(216, 51, 91, 0.25);
+  color: #b72f57;
+  background: rgba(255, 255, 255, 0.88);
+  font-weight: 600;
+  padding: 11px 12px;
+  cursor: pointer;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+.adminLogout:hover {
+  background: rgba(255, 245, 249, 0.95);
+  transform: translateY(-1px);
+}
+
+.adminMain {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.adminHeader {
+  background: var(--admin-surface);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--admin-stroke);
+  border-radius: 24px;
+  padding: 18px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--admin-shadow);
+  animation: fadeUp 0.5s ease-out;
+}
+
+.adminTitle {
+  margin: 0;
+  font-family: "Space Grotesk", "Sora", sans-serif;
+  font-size: clamp(24px, 2.4vw, 36px);
+  color: var(--admin-title);
+}
+
+.adminBreadcrumb {
+  margin: 2px 0 0;
+  color: var(--admin-muted);
+  font-size: 14px;
+}
+
+.adminBackBtn {
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(120deg, #1e63ff, #38b2ff);
+  color: #fff;
+  font-weight: 700;
+  padding: 11px 18px;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(42, 103, 255, 0.28);
+  transition: transform 0.16s ease;
+}
+
+.adminBackBtn:hover {
+  transform: translateY(-1px);
+}
+
+.adminCard {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  border-radius: 24px;
+  border: 1px solid var(--admin-stroke);
+  padding: 20px;
+  box-shadow: var(--admin-shadow);
+}
+
+.adminCardEnter {
+  animation: fadeUp 0.6s ease-out;
+}
+
+.adminDelay {
+  animation-delay: 0.08s;
+}
+
+.adminSectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.adminSectionHead h2 {
+  margin: 0;
+  color: var(--admin-title);
+  font-size: clamp(18px, 1.8vw, 26px);
+}
+
+.adminLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--admin-text);
+}
+
+.adminInput {
+  width: 100%;
+  margin-top: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(33, 64, 140, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 12px 14px;
+  font-size: 15px;
+  color: var(--admin-title);
+}
+
+.adminInput:focus {
+  outline: none;
+  border-color: rgba(47, 102, 255, 0.58);
+  box-shadow: 0 0 0 3px rgba(47, 102, 255, 0.18);
+}
+
+.adminUploadGrid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(280px, 1.1fr);
+  gap: 14px;
+}
+
+.adminPreviewPane {
+  border-radius: 18px;
+  border: 1px solid rgba(33, 64, 140, 0.16);
+  background: #f7faff;
+  padding: 10px;
+}
+
+.adminPhotoMock {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 14px;
+  border: 2px solid rgba(0, 188, 212, 0.45);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(61, 185, 255, 0.34), transparent 36%),
+    linear-gradient(150deg, #bdd7ff, #86b7ff 44%, #3f76d1);
+  animation: pulseGlow 2.8s ease-in-out infinite;
+}
+
+.adminDropZone {
+  border-radius: 18px;
+  border: 2px dashed rgba(47, 102, 255, 0.28);
+  background:
+    linear-gradient(145deg, rgba(243, 248, 255, 0.95), rgba(232, 241, 255, 0.95));
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 22px;
+}
+
+.adminDropIcon {
+  font-size: 32px;
+  color: #2f66ff;
+  line-height: 1;
+}
+
+.adminDropZone p {
+  margin: 6px 0 0;
+  color: var(--admin-title);
+  font-weight: 600;
+}
+
+.adminDropZone small {
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
+.adminPickBtn,
+.adminBtnPrimary,
+.adminBtnGhost,
+.adminSeeAll {
+  border-radius: 13px;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.adminPickBtn {
+  margin-top: 2px;
+  padding: 11px 18px;
+  color: #fff;
+  font-weight: 700;
+  background: linear-gradient(120deg, #1f65ff, #35b4ff);
+  box-shadow: 0 10px 20px rgba(31, 101, 255, 0.24);
+}
+
+.adminCardActions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.adminBtnGhost {
+  padding: 11px 18px;
+  background: #fff;
+  color: var(--admin-text);
+  border: 1px solid rgba(33, 64, 140, 0.16);
+}
+
+.adminBtnPrimary {
+  padding: 11px 18px;
+  color: #fff;
+  font-weight: 700;
+  background: linear-gradient(120deg, #1f65ff, #35b4ff);
+}
+
+.adminSeeAll {
+  padding: 9px 14px;
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent);
+  font-weight: 700;
+}
+
+.adminTableWrap {
+  overflow-x: auto;
+}
+
+.adminTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 620px;
+}
+
+.adminTable th,
+.adminTable td {
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.adminTable th {
+  background: #e8f0ff;
+  color: #3d548f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.adminTable td {
+  border-bottom: 1px solid rgba(33, 64, 140, 0.08);
+  color: var(--admin-text);
+  font-size: 14px;
+}
+
+.adminTable tbody tr {
+  transition: background-color 0.14s ease;
+}
+
+.adminTable tbody tr:hover {
+  background: rgba(229, 238, 255, 0.6);
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes adminFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(24px);
+  }
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 188, 212, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(0, 188, 212, 0.08);
+  }
+}
+
+@media (max-width: 1080px) {
+  .adminRoot {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .adminSidebar {
+    animation: fadeUp 0.5s ease-out;
+  }
+}
+
+@media (max-width: 720px) {
+  .adminRoot {
+    gap: 14px;
+  }
+
+  .adminSidebar {
+    padding: 14px;
+  }
+
+  .adminUploadGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .adminBackBtn {
+    width: 100%;
+  }
+
+  .adminCardActions {
+    flex-direction: column;
+  }
+
+  .adminBtnPrimary,
+  .adminBtnGhost {
+    width: 100%;
+  }
+}
