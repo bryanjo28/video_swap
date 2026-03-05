@@ -1,8 +1,8 @@
 export default function PreviewPage({ previewUrl, downloadUrl, onBack }) {
   return (
     <div className="previewPage">
-      <div className="previewHeader">Hasil Video</div>
-      <div className="previewSub">Lihat hasilnya lalu download.</div>
+      <div className="previewHeader">Preview</div>
+      <div className="previewSub">Download the Video below.</div>
 
       <div className="previewFrameWrap">
         <div className="previewFrame">

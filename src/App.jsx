@@ -1,8 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import aiFace from "./assets/ai_face.png";
+import logoBcaFallback from "./assets/BCA_white.png";
 import "./App.css";
-import OutfitSidePanel from "./OutfitSidePanel.jsx";
 import PreviewPage from "./PreviewPage.jsx";
+
+const API_BASE_URL = "http://localhost:8000";
+const COSTUMES_PER_PAGE = 4;
+
+const toTitleCase = (value) =>
+  value
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const toMediaUrl = (path) => {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path) || path.startsWith("data:")) return path;
+  const normalized = String(path).replace(/^\.?\//, "");
+  if (normalized.startsWith("/")) return `${API_BASE_URL}${normalized}`;
+  return `${API_BASE_URL}/${normalized}`;
+};
+
+const normalizeCostumeItem = (item) => {
+  const id = String(item?.id || "").trim();
+  if (!id) return null;
+  const gender = String(item?.gender || "").toLowerCase().trim();
+  return {
+    id,
+    name: String(item?.name || toTitleCase(id)),
+    gender,
+    isActive: item?.isActive !== false,
+    thumbUrl: toMediaUrl(item?.thumbPath),
+  };
+};
 
 export default function App() {
   const videoRef = useRef(null);
@@ -12,7 +43,6 @@ export default function App() {
 
   const [page, setPage] = useState("welcome");
   const [formData, setFormData] = useState({
-    fullName: "",
     gender: "",
     consent: false,
   });
@@ -29,6 +59,11 @@ export default function App() {
   const [captureError, setCaptureError] = useState("");
   const [captureSource, setCaptureSource] = useState("camera");
   const [selectedFileName, setSelectedFileName] = useState("");
+  const [selectedCostumeId, setSelectedCostumeId] = useState("");
+  const [costumePageIndex, setCostumePageIndex] = useState(0);
+  const [allCostumes, setAllCostumes] = useState([]);
+  const [costumesLoading, setCostumesLoading] = useState(false);
+  const [costumesError, setCostumesError] = useState("");
 
   const [lastShot, setLastShot] = useState(null);
   const [captureFilename, setCaptureFilename] = useState("");
@@ -47,6 +82,69 @@ export default function App() {
     if (isBusy) return status;
     return "";
   }, [countdown, isBusy, status]);
+
+  const costumeOptions = useMemo(() => {
+    const selectedGender = String(formData.gender || "").toLowerCase();
+    if (!selectedGender) return [];
+    return allCostumes.filter(
+      (item) => item.isActive && item.gender === selectedGender
+    );
+  }, [allCostumes, formData.gender]);
+  const totalCostumePages = Math.max(
+    1,
+    Math.ceil(costumeOptions.length / COSTUMES_PER_PAGE)
+  );
+  const visibleCostumes = useMemo(() => {
+    const start = costumePageIndex * COSTUMES_PER_PAGE;
+    return costumeOptions.slice(start, start + COSTUMES_PER_PAGE);
+  }, [costumeOptions, costumePageIndex]);
+
+  useEffect(() => {
+    if (!costumeOptions.length) {
+      setSelectedCostumeId("");
+      setCostumePageIndex(0);
+      return;
+    }
+    setSelectedCostumeId((current) =>
+      costumeOptions.some((item) => item.id === current)
+        ? current
+        : costumeOptions[0].id
+    );
+    setCostumePageIndex((current) => Math.min(current, totalCostumePages - 1));
+  }, [costumeOptions, totalCostumePages]);
+
+  const loadCostumes = async () => {
+    try {
+      setCostumesLoading(true);
+      setCostumesError("");
+
+      const response = await fetch(`${API_BASE_URL}/costumes`);
+      const json = await response.json();
+      if (!response.ok || json?.ok === false) {
+        throw new Error(json?.detail || json?.message || "Failed to load costumes");
+      }
+
+      const sourceItems = Array.isArray(json?.items) ? json.items : [];
+      const mappedItems = sourceItems
+        .map(normalizeCostumeItem)
+        .filter(Boolean);
+
+      setAllCostumes(mappedItems);
+      console.log("[costume] loaded", mappedItems);
+    } catch (err) {
+      const message = err?.message || String(err);
+      setCostumesError(message);
+      console.error("[costume] load error", message);
+    } finally {
+      setCostumesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (page !== "costume") return;
+    if (allCostumes.length || costumesLoading) return;
+    loadCostumes();
+  }, [page, allCostumes.length, costumesLoading]);
 
   useEffect(() => {
     if (page !== "capture") return;
@@ -120,7 +218,7 @@ export default function App() {
 
   const pollJob = async (id) => {
     while (true) {
-      const r = await fetch(`http://localhost:8000/status/${id}`);
+      const r = await fetch(`${API_BASE_URL}/status/${id}`);
       const j = await r.json();
 
       if (!r.ok || j.ok === false) {
@@ -150,13 +248,20 @@ export default function App() {
     setProcessingElapsed(0);
     setPreviewUrl("");
 
-    const res = await fetch("http://localhost:8000/start", {
+    const startPayload = {
+      capture_filename: filename,
+      costume_id: selectedCostumeId || undefined,
+    };
+    console.log("[start] payload", startPayload);
+
+    const res = await fetch(`${API_BASE_URL}/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ capture_filename: filename }),
+      body: JSON.stringify(startPayload),
     });
 
     const json = await res.json();
+    console.log("[start] response", json);
     if (!res.ok || json.ok === false) {
       throw new Error(json.detail || "Failed to start job");
     }
@@ -215,6 +320,14 @@ export default function App() {
     galleryInputRef.current?.click();
   };
 
+  const handleCostumeSelect = (costumeId) => {
+    setSelectedCostumeId(costumeId);
+    console.log("[costume] selected", {
+      costume_id: costumeId,
+      gender: formData.gender,
+    });
+  };
+
   const handleGalleryFileChange = async (e) => {
     try {
       const file = e.target.files?.[0];
@@ -266,7 +379,7 @@ export default function App() {
       setJobMessage("");
 
       setStatus("Uploading photo...");
-      const res = await fetch("http://localhost:8000/capture", {
+      const res = await fetch(`${API_BASE_URL}/capture`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: pendingCapture }),
@@ -308,41 +421,55 @@ export default function App() {
     return () => clearInterval(t);
   }, [processingStart, jobStatus]);
 
-  const downloadUrl = jobId ? `http://localhost:8000/download/${jobId}` : "";
-  const greetingName = formData.fullName.trim();
+  const downloadUrl = jobId ? `${API_BASE_URL}/download/${jobId}` : "";
   const elapsedText = `${Math.floor(processingElapsed / 60)
     .toString()
     .padStart(2, "0")}:${(processingElapsed % 60).toString().padStart(2, "0")}`;
 
-  const canContinue =
-    formData.fullName.trim().length > 0 && formData.gender && formData.consent;
-  const showNameError = formTouched && !formData.fullName.trim();
-  const showGenderError = formTouched && !formData.gender;
+  const canContinue = formData.consent;
   const showConsentError = formTouched && !formData.consent;
 
   const handleContinue = () => {
     setFormTouched(true);
     if (!canContinue) return;
-    setPage("capture");
+    setPage("costume");
   };
 
   if (page === "welcome") {
     return (
       <div className="welcomePage">
+        <div className="welcomeStars" />
         <div className="welcomeGlow welcomeGlowA" />
         <div className="welcomeGlow welcomeGlowB" />
+        <div className="welcomeBrand">
+          <img
+            className="welcomeBrandLogo"
+            src="/src/assets/BCA_white.png"
+            alt="BCA"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = logoBcaFallback;
+            }}
+          />
+        </div>
         <div className="welcomeCard">
-          <div className="welcomeBadge">AI EXPERIENCE</div>
-          <h1 className="welcomeTitle">Welcome to Face Swap Generator</h1>
-          <p className="welcomeSub">
-            Mulai pengalaman face swap kamu dengan satu klik.
-          </p>
+          <div className="welcomeAvatarWrap">
+            <div className="welcomeAvatarRing">
+              <img className="welcomeAvatar" src={aiFace} alt="AI assistant" />
+            </div>
+          </div>
+          <h1 className="welcomeTitle">
+            Welcome to
+            <span>BCA Gallery</span>
+            <span>AI Video Generator</span>
+          </h1>
           <button
             type="button"
             className="welcomeButton"
             onClick={() => setPage("intro")}
           >
-            Klik Di Sini
+            <span>Get Started</span>
+            <span aria-hidden="true">&gt;</span>
           </button>
         </div>
       </div>
@@ -361,59 +488,7 @@ export default function App() {
           <div className="introStep">Step 1 of 2</div>
           <div className="introTitle">Data Pengguna</div>
           <div className="introSub">
-            Isi data singkat sebelum proses capture dimulai.
-          </div>
-
-          <div className="introField">
-            <label className="introLabel" htmlFor="fullName">
-              Nama Lengkap
-            </label>
-            <input
-              id="fullName"
-              className={`introInput ${showNameError ? "isError" : ""}`}
-              type="text"
-              placeholder="Masukkan nama lengkap"
-              value={formData.fullName}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, fullName: e.target.value }))
-              }
-            />
-            {showNameError ? (
-              <div className="introError">Nama lengkap wajib diisi.</div>
-            ) : null}
-          </div>
-
-          <div className="introField">
-            <div className="introLabel">Jenis Kelamin</div>
-            <div className="introRadioRow">
-              <label className="introRadio">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="male"
-                  checked={formData.gender === "male"}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, gender: e.target.value }))
-                  }
-                />
-                <span>Laki-Laki</span>
-              </label>
-              <label className="introRadio">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="female"
-                  checked={formData.gender === "female"}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, gender: e.target.value }))
-                  }
-                />
-                <span>Perempuan</span>
-              </label>
-            </div>
-            {showGenderError ? (
-              <div className="introError">Pilih salah satu.</div>
-            ) : null}
+            Silakan centang persetujuan sebelum lanjut pilih costume.
           </div>
 
           <div className="introField">
@@ -442,7 +517,149 @@ export default function App() {
             Lanjutkan
           </button>
           <div className="introHint">
-            Selanjutnya kamu akan mengambil foto untuk proses face swap.
+            Selanjutnya kamu akan pilih gender dan costume.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (page === "costume") {
+    return (
+      <div className="costumePage">
+        <div className="welcomeBrand">
+          <img
+            className="welcomeBrandLogo"
+            src="/src/assets/BCA_white.png"
+            alt="BCA"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = logoBcaFallback;
+            }}
+          />
+        </div>
+
+        <div className="costumeCard">
+          <div className="costumeStep">Step 2 of 2</div>
+          <div className="costumeGenderWrap">
+            <div className="costumeGenderLabel">Choose Gender</div>
+            <div className="costumeGenderRow">
+              <button
+                type="button"
+                className={`genderBtn ${
+                  formData.gender === "male" ? "isActive" : ""
+                }`}
+                onClick={() =>
+                  setFormData((prev) => ({ ...prev, gender: "male" }))
+                }
+                aria-label="Male"
+              >
+                <span className="genderIcon maleIcon">♂</span>
+                <span className="genderText">Male</span>
+              </button>
+              <button
+                type="button"
+                className={`genderBtn ${
+                  formData.gender === "female" ? "isActive" : ""
+                }`}
+                onClick={() =>
+                  setFormData((prev) => ({ ...prev, gender: "female" }))
+                }
+                aria-label="Female"
+              >
+                <span className="genderIcon femaleIcon">♀</span>
+                <span className="genderText">Female</span>
+              </button>
+            </div>
+          </div>
+          <h2 className="costumeTitle">Choose Costume</h2>
+
+          {costumesLoading ? (
+            <div className="costumeEmpty">Loading costumes...</div>
+          ) : costumesError ? (
+            <div className="costumeEmpty">
+              <div className="costumeErrorText">Gagal load costume: {costumesError}</div>
+              <button
+                type="button"
+                className="costumeRetry"
+                onClick={loadCostumes}
+              >
+                Coba Lagi
+              </button>
+            </div>
+          ) : costumeOptions.length ? (
+            <div className="costumeSelector">
+              <button
+                type="button"
+                className="costumeArrow"
+                onClick={() =>
+                  setCostumePageIndex((current) => Math.max(0, current - 1))
+                }
+                disabled={costumePageIndex === 0}
+                aria-label="Previous costume page"
+              >
+                &lt;
+              </button>
+              <div className="costumeGrid">
+                {visibleCostumes.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`costumeItem ${
+                      selectedCostumeId === item.id ? "isActive" : ""
+                    }`}
+                    style={{ "--costume-order": index }}
+                    onClick={() => handleCostumeSelect(item.id)}
+                  >
+                    <img className="costumeImage" src={item.thumbUrl} alt={item.name} />
+                    <div className="costumeName">{item.name}</div>
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="costumeArrow"
+                onClick={() =>
+                  setCostumePageIndex((current) =>
+                    Math.min(totalCostumePages - 1, current + 1)
+                  )
+                }
+                disabled={costumePageIndex >= totalCostumePages - 1}
+                aria-label="Next costume page"
+              >
+                &gt;
+              </button>
+            </div>
+          ) : (
+            <div className="costumeEmpty">
+              {formData.gender
+                ? `Belum ada costume aktif untuk gender ${formData.gender}.`
+                : "Pilih gender dulu untuk melihat costume."}
+            </div>
+          )}
+
+          {costumeOptions.length > COSTUMES_PER_PAGE ? (
+            <div className="costumePager">
+              Page {costumePageIndex + 1} of {totalCostumePages}
+            </div>
+          ) : null}
+
+          <div className="costumeActionsRow">
+            <button
+              type="button"
+              className="costumeBack"
+              onClick={() => setPage("intro")}
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              className="costumeNext"
+              onClick={() => setPage("capture")}
+              disabled={!selectedCostumeId}
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>
@@ -486,13 +703,10 @@ export default function App() {
       />
       <div className="captureHeader">Ambil Foto</div>
       <div className="captureGreeting">
-        <div className="captureHello">Hi, {greetingName}</div>
         <div className="captureGuide">Silakan posisikan wajah dalam bingkai</div>
       </div>
 
       <div className="captureBody">
-        <OutfitSidePanel />
-
         <div className="frameWrap">
           <div className="frameShell">
             <video ref={videoRef} className="frameVideo" playsInline muted />
@@ -502,7 +716,7 @@ export default function App() {
       </div>
 
       <div className="captureActions">
-        <button className="actionPill" type="button" onClick={() => setPage("intro")}>
+        <button className="actionPill" type="button" onClick={() => setPage("costume")}>
           Kembali
         </button>
         <button

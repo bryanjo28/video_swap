@@ -198,9 +198,11 @@
 }
 
 .adminMain {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 18px;
   min-width: 0;
+  align-self: start;
 }
 
 .adminHeader {
@@ -401,6 +403,49 @@
   font-weight: 700;
 }
 
+.adminTableTools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.adminFilterTools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.adminSearchInput,
+.adminGenderSelect {
+  border-radius: 12px;
+  border: 1px solid rgba(33, 64, 140, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--admin-title);
+  font-family: inherit;
+  font-size: 13px;
+  height: 36px;
+  padding: 0 12px;
+}
+
+.adminSearchInput {
+  width: 220px;
+  max-width: 100%;
+}
+
+.adminGenderSelect {
+  min-width: 130px;
+  cursor: pointer;
+}
+
+.adminSearchInput:focus,
+.adminGenderSelect:focus {
+  outline: none;
+  border-color: rgba(47, 102, 255, 0.56);
+  box-shadow: 0 0 0 3px rgba(47, 102, 255, 0.16);
+}
+
 .adminTableWrap {
   overflow-x: auto;
 }
@@ -436,6 +481,215 @@
 
 .adminTable tbody tr:hover {
   background: rgba(229, 238, 255, 0.6);
+}
+
+.adminThumbPreview {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(33, 64, 140, 0.16);
+  display: block;
+}
+
+.adminPagination {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.adminPaginationInfo {
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+
+.adminPaginationActions {
+  display: flex;
+  gap: 8px;
+}
+
+.adminPageBtn {
+  border: 1px solid rgba(33, 64, 140, 0.16);
+  background: #fff;
+  color: var(--admin-text);
+  border-radius: 11px;
+  height: 34px;
+  min-width: 54px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.adminPageBtn.isCurrent {
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent);
+  border-color: rgba(47, 102, 255, 0.28);
+}
+
+.adminPageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 36, 82, 0.32);
+  backdrop-filter: blur(2px);
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modalContent {
+  width: min(560px, 100%);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--admin-stroke);
+  border-radius: 20px;
+  box-shadow: var(--admin-shadow);
+  padding: 18px;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.modalTitle {
+  margin: 0;
+  color: var(--admin-title);
+  font-size: 24px;
+  font-family: "Space Grotesk", "Sora", sans-serif;
+}
+
+.modalCloseBtn {
+  border-radius: 12px;
+  border: 1px solid rgba(33, 64, 140, 0.16);
+  background: #fff;
+  color: var(--admin-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  height: 34px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.modalForm {
+  display: grid;
+  gap: 8px;
+}
+
+.modalLabel {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--admin-text);
+  font-weight: 600;
+}
+
+.modalInput,
+.modalReadOnly,
+.modalFile {
+  border-radius: 12px;
+  border: 1px solid rgba(33, 64, 140, 0.18);
+  background: #fff;
+  color: var(--admin-title);
+  font-family: inherit;
+}
+
+.modalInput {
+  height: 38px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.modalReadOnly {
+  min-height: 38px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--admin-muted);
+  background: rgba(233, 241, 255, 0.55);
+}
+
+.modalFile {
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.modalInput:focus,
+.modalFile:focus {
+  outline: none;
+  border-color: rgba(47, 102, 255, 0.56);
+  box-shadow: 0 0 0 3px rgba(47, 102, 255, 0.14);
+}
+
+.modalRadioRow {
+  display: flex;
+  gap: 16px;
+}
+
+.modalRadio,
+.modalCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--admin-text);
+}
+
+.modalErrorText {
+  margin-top: 4px;
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-size: 13px;
+  color: #a7284f;
+  background: rgba(255, 236, 243, 0.92);
+  border: 1px solid rgba(215, 53, 96, 0.22);
+}
+
+.modalActions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modalBtnGhost,
+.modalBtnPrimary {
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  height: 36px;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.modalBtnGhost {
+  border: 1px solid rgba(33, 64, 140, 0.16);
+  background: #fff;
+  color: var(--admin-text);
+}
+
+.modalBtnPrimary {
+  color: #fff;
+  background: linear-gradient(120deg, #1f65ff, #35b4ff);
+}
+
+.modalBtnGhost:disabled,
+.modalBtnPrimary:disabled,
+.modalCloseBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @keyframes slideInLeft {
@@ -519,6 +773,35 @@
 
   .adminBtnPrimary,
   .adminBtnGhost {
+    width: 100%;
+  }
+
+  .adminTableTools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .adminFilterTools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .adminSearchInput {
+    width: 100%;
+  }
+
+  .adminPagination {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .modalActions {
+    flex-direction: column;
+  }
+
+  .modalBtnGhost,
+  .modalBtnPrimary,
+  .modalCloseBtn {
     width: 100%;
   }
 }

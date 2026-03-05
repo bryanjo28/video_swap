@@ -16,8 +16,13 @@ body,
 #root {
   width: 100%;
   min-height: 100%;
+  height: 100%;
 }
 
 body {
   margin: 0;
+  background:
+    radial-gradient(circle at 20% 12%, rgba(21, 101, 192, 0.4), transparent 36%),
+    radial-gradient(circle at 82% 88%, rgba(0, 188, 212, 0.22), transparent 42%),
+    linear-gradient(160deg, #031f4a 0%, #072b62 52%, #0b336f 100%);
 }
