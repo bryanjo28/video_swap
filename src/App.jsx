@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import aiFace from "./assets/ai_face.png";
 import logoBcaFallback from "./assets/BCA_white.png";
+import processingVideo from "./assets/media1.mp4";
 import "./App.css";
 import PreviewPage from "./PreviewPage.jsx";
 
@@ -40,6 +41,8 @@ export default function App() {
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const galleryInputRef = useRef(null);
+  const frameShellRef = useRef(null);
+  const faceOvalRef = useRef(null);
 
   const [page, setPage] = useState("welcome");
   const [formData, setFormData] = useState({
@@ -73,8 +76,6 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [speedFps, setSpeedFps] = useState(0);
   const [jobMessage, setJobMessage] = useState("");
-  const [processingStart, setProcessingStart] = useState(0);
-  const [processingElapsed, setProcessingElapsed] = useState(0);
   const [previewUrl, setPreviewUrl] = useState("");
 
   const busyText = useMemo(() => {
@@ -201,17 +202,69 @@ export default function App() {
   const captureFrameToDataUrl = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
+    const frameShell = frameShellRef.current;
+    const faceOval = faceOvalRef.current;
     if (!video || !canvas) throw new Error("Camera not ready");
 
     if (!video.videoWidth || !video.videoHeight) {
       throw new Error("Video not ready yet. Try again in a moment.");
     }
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    const sourceW = video.videoWidth;
+    const sourceH = video.videoHeight;
+    canvas.width = sourceW;
+    canvas.height = sourceH;
 
     const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, sourceW, sourceH);
+
+    if (frameShell && faceOval) {
+      const shellRect = frameShell.getBoundingClientRect();
+      const ovalRect = faceOval.getBoundingClientRect();
+      if (shellRect.width > 0 && shellRect.height > 0) {
+        // Map crop area exactly like CSS object-fit: cover in the frame.
+        const shellW = shellRect.width;
+        const shellH = shellRect.height;
+        const coverScale = Math.max(shellW / sourceW, shellH / sourceH);
+        const drawnW = sourceW * coverScale;
+        const drawnH = sourceH * coverScale;
+        const offsetX = (shellW - drawnW) / 2;
+        const offsetY = (shellH - drawnH) / 2;
+
+        const ovalX = ovalRect.left - shellRect.left;
+        const ovalY = ovalRect.top - shellRect.top;
+        const rawSrcX = (ovalX - offsetX) / coverScale;
+        const rawSrcY = (ovalY - offsetY) / coverScale;
+        const rawSrcW = ovalRect.width / coverScale;
+        const rawSrcH = ovalRect.height / coverScale;
+
+        const srcX = Math.max(0, Math.round(rawSrcX));
+        const srcY = Math.max(0, Math.round(rawSrcY));
+        const srcW = Math.max(
+          1,
+          Math.min(sourceW - srcX, Math.round(rawSrcW))
+        );
+        const srcH = Math.max(
+          1,
+          Math.min(sourceH - srcY, Math.round(rawSrcH))
+        );
+
+        const ovalCanvas = document.createElement("canvas");
+        ovalCanvas.width = srcW;
+        ovalCanvas.height = srcH;
+        const ovalCtx = ovalCanvas.getContext("2d");
+
+        // Clip to exact oval so only portrait area is exported.
+        ovalCtx.save();
+        ovalCtx.beginPath();
+        ovalCtx.ellipse(srcW / 2, srcH / 2, srcW / 2, srcH / 2, 0, 0, Math.PI * 2);
+        ovalCtx.clip();
+        ovalCtx.drawImage(canvas, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+        ovalCtx.restore();
+
+        return ovalCanvas.toDataURL("image/png");
+      }
+    }
 
     return canvas.toDataURL("image/jpeg", 0.95);
   };
@@ -244,8 +297,6 @@ export default function App() {
     setProgress(0);
     setSpeedFps(0);
     setJobMessage("Queued");
-    setProcessingStart(Date.now());
-    setProcessingElapsed(0);
     setPreviewUrl("");
 
     const startPayload = {
@@ -378,6 +429,33 @@ export default function App() {
       setSpeedFps(0);
       setJobMessage("");
 
+      setStatus("Checking face...");
+      const confirmRes = await fetch(`${API_BASE_URL}/capture-confirmation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: pendingCapture }),
+      });
+      const confirmJson = await confirmRes.json();
+      if (!confirmRes.ok || confirmJson?.ok === false) {
+        throw new Error(
+          confirmJson?.detail ||
+            confirmJson?.message ||
+            "Face detection failed. Please try again."
+        );
+      }
+
+      const faceCount = Number(confirmJson?.face_count || 0);
+      if (!confirmJson?.has_face || faceCount < 1) {
+        throw new Error(
+          "Wajah tidak terdeteksi. Pastikan wajah berada di dalam oval dan pencahayaan cukup."
+        );
+      }
+      if (confirmJson?.multiple_faces || faceCount > 1) {
+        throw new Error(
+          "Terdeteksi lebih dari satu wajah. Pastikan hanya satu orang yang terlihat di kamera."
+        );
+      }
+
       setStatus("Uploading photo...");
       const res = await fetch(`${API_BASE_URL}/capture`, {
         method: "POST",
@@ -413,18 +491,7 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    if (!processingStart || jobStatus === "done" || jobStatus === "error") return;
-    const t = setInterval(() => {
-      setProcessingElapsed(Math.floor((Date.now() - processingStart) / 1000));
-    }, 500);
-    return () => clearInterval(t);
-  }, [processingStart, jobStatus]);
-
   const downloadUrl = jobId ? `${API_BASE_URL}/download/${jobId}` : "";
-  const elapsedText = `${Math.floor(processingElapsed / 60)
-    .toString()
-    .padStart(2, "0")}:${(processingElapsed % 60).toString().padStart(2, "0")}`;
 
   const canContinue = formData.consent;
   const showConsentError = formTouched && !formData.consent;
@@ -674,8 +741,6 @@ export default function App() {
     setProgress(0);
     setSpeedFps(0);
     setJobMessage("");
-    setProcessingStart(0);
-    setProcessingElapsed(0);
     setPreviewUrl("");
     setIsBusy(false);
     setCountdown(0);
@@ -708,9 +773,9 @@ export default function App() {
 
       <div className="captureBody">
         <div className="frameWrap">
-          <div className="frameShell">
+          <div ref={frameShellRef} className="frameShell">
             <video ref={videoRef} className="frameVideo" playsInline muted />
-            <div className="faceOval" />
+            <div ref={faceOvalRef} className="faceOval" />
           </div>
         </div>
       </div>
@@ -810,7 +875,14 @@ export default function App() {
           <div className="processingCard">
             <div className="processingTitle">Processing video...</div>
             <div className="processingSub">{jobMessage || "Processing frames..."}</div>
-            <div className="processingTime">Time: {elapsedText}</div>
+            <video
+              className="processingPreviewVideo"
+              src={processingVideo}
+              autoPlay
+              loop
+              muted
+              playsInline
+            />
           </div>
         </div>
       ) : null}
