@@ -548,6 +548,17 @@ export default function App() {
       <div className="introPage">
         <div className="introGlow introGlowA" />
         <div className="introGlow introGlowB" />
+        <div className="welcomeBrand">
+          <img
+            className="welcomeBrandLogo"
+            src="/src/assets/BCA_white.png"
+            alt="BCA"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = logoBcaFallback;
+            }}
+          />
+        </div>
         <div className="introCard">
           <div className="introAvatar">
             <img className="introAvatarImg" src={aiFace} alt="AI face" />
@@ -734,7 +745,7 @@ export default function App() {
   }
 
   const handleBackFromPreview = () => {
-    setPage("intro");
+    setPage("welcome");
     // Reset job state so capture countdown overlay can show again.
     setJobId("");
     setJobStatus("");
@@ -873,8 +884,6 @@ export default function App() {
         <div className="processingOverlay">
           <div className="processingRing" />
           <div className="processingCard">
-            <div className="processingTitle">Processing video...</div>
-            <div className="processingSub">{jobMessage || "Processing frames..."}</div>
             <video
               className="processingPreviewVideo"
               src={processingVideo}
@@ -883,6 +892,8 @@ export default function App() {
               muted
               playsInline
             />
+            <div className="processingTitle">Processing video...</div>
+            {/* <div className="processingSub">{jobMessage || "Processing frames..."}</div> */}
           </div>
         </div>
       ) : null}
