@@ -7,6 +7,16 @@ import PreviewPage from "./PreviewPage.jsx";
 
 const API_BASE_URL = "http://localhost:8000";
 const COSTUMES_PER_PAGE = 4;
+const STAGE_LABELS = {
+  queued: "Queued",
+  preparing: "Preparing",
+  extracting: "Extracting frames",
+  processing: "Processing frames",
+  encoding: "Encoding video",
+  finalizing: "Finalizing output",
+  done: "Done",
+  error: "Error",
+};
 
 const toTitleCase = (value) =>
   value
@@ -76,6 +86,9 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [speedFps, setSpeedFps] = useState(0);
   const [jobMessage, setJobMessage] = useState("");
+  const [jobStage, setJobStage] = useState("queued");
+  const [processedFrames, setProcessedFrames] = useState(0);
+  const [totalFrames, setTotalFrames] = useState(0);
   const [previewUrl, setPreviewUrl] = useState("");
 
   const busyText = useMemo(() => {
@@ -282,6 +295,9 @@ export default function App() {
       setProgress(Number(j.progress || 0));
       setSpeedFps(Number(j.speed_fps || 0));
       setJobMessage(j.message || "");
+      setJobStage(String(j.stage || ""));
+      setProcessedFrames(Number(j.processed_frames || 0));
+      setTotalFrames(Number(j.total_frames || 0));
 
       if (j.status === "done") return j;
       if (j.status === "error") throw new Error(j.message || "Processing error");
@@ -297,6 +313,9 @@ export default function App() {
     setProgress(0);
     setSpeedFps(0);
     setJobMessage("Queued");
+    setJobStage("queued");
+    setProcessedFrames(0);
+    setTotalFrames(0);
     setPreviewUrl("");
 
     const startPayload = {
@@ -428,6 +447,9 @@ export default function App() {
       setProgress(0);
       setSpeedFps(0);
       setJobMessage("");
+      setJobStage("queued");
+      setProcessedFrames(0);
+      setTotalFrames(0);
 
       setStatus("Checking face...");
       const confirmRes = await fetch(`${API_BASE_URL}/capture-confirmation`, {
@@ -482,6 +504,7 @@ export default function App() {
       setCaptureError(message);
       setStatus("Error");
       setJobStatus("");
+      setJobStage("error");
     } finally {
       setCaptureSubmitting(false);
       setIsBusy(false);
@@ -752,6 +775,9 @@ export default function App() {
     setProgress(0);
     setSpeedFps(0);
     setJobMessage("");
+    setJobStage("queued");
+    setProcessedFrames(0);
+    setTotalFrames(0);
     setPreviewUrl("");
     setIsBusy(false);
     setCountdown(0);
@@ -766,6 +792,18 @@ export default function App() {
       />
     );
   }
+
+  const processingProgress = Math.max(
+    0,
+    Math.min(100, Number.isFinite(progress) ? Math.round(progress) : 0)
+  );
+  const hasFrameCounters = totalFrames > 0;
+  const stageLabel = STAGE_LABELS[jobStage] || jobMessage || "Processing video...";
+  const processingMeta = hasFrameCounters
+    ? `${Math.min(processedFrames, totalFrames)}/${totalFrames} frames`
+    : speedFps > 0
+      ? `${speedFps.toFixed(2)} FPS`
+      : stageLabel;
 
   return (
     <div className="capturePage">
@@ -882,7 +920,6 @@ export default function App() {
 
       {jobStatus === "queued" || jobStatus === "running" ? (
         <div className="processingOverlay">
-          <div className="processingRing" />
           <div className="processingCard">
             <video
               className="processingPreviewVideo"
@@ -892,8 +929,23 @@ export default function App() {
               muted
               playsInline
             />
-            <div className="processingTitle">Processing video...</div>
-            {/* <div className="processingSub">{jobMessage || "Processing frames..."}</div> */}
+            <div className="processingProgressWrap">
+              <div
+                className="processingProgressTrack"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={processingProgress}
+              >
+                <div
+                  className="processingProgressFill"
+                  style={{ width: `${processingProgress}%` }}
+                />
+              </div>
+              <div className="processingProgressText">{processingProgress}%</div>
+            </div>
+            <div className="processingTitle">{jobMessage || "Processing video..."}</div>
+            <div className="processingSub">{processingMeta}</div>
           </div>
         </div>
       ) : null}

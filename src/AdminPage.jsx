@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./AdminPage.css";
+import { FaTrash, FaPen } from "react-icons/fa";
+import { CiTextAlignRight } from "react-icons/ci";
 
 const API_BASE_URL = "http://localhost:8000";
 const ITEMS_PER_PAGE = 5;
@@ -18,6 +20,7 @@ const toSlug = (value) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+
 export default function AdminPage() {
   const [costumes, setCostumes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,6 +32,24 @@ export default function AdminPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addSubmitting, setAddSubmitting] = useState(false);
   const [addError, setAddError] = useState("");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [editForm, setEditForm] = useState({
+    id: "",
+    name: "",
+    gender: "male",
+    isActive: true,
+    video: null,
+    thumbnail: null,
+  });
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    id: null,
+    name: "",
+  });
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [addForm, setAddForm] = useState({
     name: "",
     gender: "male",
@@ -66,13 +87,23 @@ export default function AdminPage() {
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key === "Escape") {
-        setIsAddModalOpen(false);
+        if (!addSubmitting) {
+          setIsAddModalOpen(false);
+        }
+        if (!editSubmitting) {
+          setIsEditModalOpen(false);
+          setEditError("");
+        }
+        if (!deleteSubmitting) {
+          setDeleteModal({ isOpen: false, id: null, name: "" });
+          setDeleteError("");
+        }
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [addSubmitting, editSubmitting, deleteSubmitting]);
 
   const genderOptions = useMemo(() => {
     const unique = new Set(
@@ -186,6 +217,121 @@ export default function AdminPage() {
   };
 
   const slugPreview = toSlug(addForm.name) || "(auto generate)";
+  const editSlugPreview = toSlug(editForm.name) || "(auto generate)";
+
+  const handleOpenEditModal = (item) => {
+    setEditError("");
+    setEditForm({
+      id: String(item?.id || ""),
+      name: String(item?.name || ""),
+      gender: String(item?.gender || "male").toLowerCase() === "female" ? "female" : "male",
+      isActive: item?.isActive !== false,
+      video: null,
+      thumbnail: null,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    if (editSubmitting) return;
+    setIsEditModalOpen(false);
+    setEditError("");
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setEditError("");
+
+      if (!editForm.id) {
+        throw new Error("Invalid costume id.");
+      }
+
+      const trimmedName = editForm.name.trim();
+      if (!trimmedName) {
+        throw new Error("Name is required.");
+      }
+
+      setEditSubmitting(true);
+      const formData = new FormData();
+      formData.append("name", trimmedName);
+      formData.append("gender", editForm.gender);
+      formData.append("isActive", editForm.isActive ? "true" : "false");
+      if (editForm.video) {
+        formData.append("video", editForm.video);
+      }
+      if (editForm.thumbnail) {
+        formData.append("thumbnail", editForm.thumbnail);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/costumes/${editForm.id}`, {
+        method: "PUT",
+        body: formData,
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.ok === false) {
+        throw new Error(json?.detail || json?.message || "Failed to update costume");
+      }
+
+      await loadCostumes();
+      setIsEditModalOpen(false);
+      setEditForm({
+        id: "",
+        name: "",
+        gender: "male",
+        isActive: true,
+        video: null,
+        thumbnail: null,
+      });
+      setEditError("");
+    } catch (err) {
+      setEditError(err?.message || String(err));
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const handleOpenDeleteModal = (item) => {
+    setDeleteError("");
+    setDeleteModal({
+      isOpen: true,
+      id: item?.id ?? null,
+      name: safeText(item?.name),
+    });
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (deleteSubmitting) return;
+    setDeleteModal({ isOpen: false, id: null, name: "" });
+    setDeleteError("");
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.id) {
+      setDeleteError("Invalid costume id.");
+      return;
+    }
+
+    try {
+      setDeleteError("");
+      setDeleteSubmitting(true);
+
+      const res = await fetch(`${API_BASE_URL}/costumes/${deleteModal.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.ok === false) {
+        throw new Error(data?.detail || data?.message || "Delete failed");
+      }
+
+      await loadCostumes();
+      setDeleteModal({ isOpen: false, id: null, name: "" });
+    } catch (err) {
+      setDeleteError(err?.message || String(err));
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  };
 
   return (
     <div className="adminRoot">
@@ -281,21 +427,22 @@ export default function AdminPage() {
                   <th>Name</th>
                   <th>Gender</th>
                   <th>Active</th>
-                  <th>Thumbnail</th>
+                  <th>Foto Kostum</th>
+                  <th style={{textAlign:"right"}}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6}>Loading costumes...</td>
+                    <td colSpan={7}>Loading costumes...</td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={6}>Failed to load costumes: {error}</td>
+                    <td colSpan={7}>Failed to load costumes: {error}</td>
                   </tr>
                 ) : filteredCostumes.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>No data matches current filter/search.</td>
+                    <td colSpan={7}>No data matches current filter/search.</td>
                   </tr>
                 ) : (
                   pagedCostumes.map((item, index) => (
@@ -304,7 +451,20 @@ export default function AdminPage() {
                       <td>{safeText(item?.id)}</td>
                       <td>{safeText(item?.name)}</td>
                       <td>{safeText(item?.gender)}</td>
-                      <td>{item?.isActive === false ? "No" : "Yes"}</td>
+                      <td >
+                        <span
+                          style={{
+                            padding: "4px 6px",
+                            borderRadius: "20px",
+                            fontSize: "12px",
+                            fontWeight: "500",
+                            color: "white",
+                            backgroundColor: item?.isActive ? "#22c55e" : "#ef4444",
+                          }}
+                        >
+                          {item?.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
                       <td>
                         {item?.thumbBase64 || item?.thumbPath ? (
                           <img
@@ -315,6 +475,39 @@ export default function AdminPage() {
                         ) : (
                           "-"
                         )}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "right" }}>
+
+                          {/* EDIT */}
+                          <button
+                            style={{
+                              backgroundColor: "#facc15",
+                              border: "none",
+                              padding: "8px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                            }}
+                            onClick={() => handleOpenEditModal(item)}
+                          >
+                            <FaPen color="black" />
+                          </button>
+
+                          {/* DELETE */}
+                          <button
+                            style={{
+                              backgroundColor: "#ef4444",
+                              border: "none",
+                              padding: "8px",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                            }}
+                            onClick={() => handleOpenDeleteModal(item)}
+                          >
+                            <FaTrash color="white" />
+                          </button>
+
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -359,135 +552,312 @@ export default function AdminPage() {
       </main>
 
       {isAddModalOpen && (
-      <div className="modalOverlay" onClick={handleCloseAddModal}>
-        <div className="modalContent" onClick={(e) => e.stopPropagation()}>
-          <div className="modalHeader">
-            <h3 className="modalTitle">Add New Costume</h3>
-            <button
-              type="button"
-              className="modalCloseBtn"
-              onClick={handleCloseAddModal}
-              disabled={addSubmitting}
-            >
-              Close
-            </button>
-          </div>
-
-          <form className="modalForm" onSubmit={handleAddSubmit}>
-            <label className="modalLabel" htmlFor="costume-name">
-              Name
-            </label>
-            <input
-              id="costume-name"
-              type="text"
-              className="modalInput"
-              value={addForm.name}
-              onChange={(e) =>
-                setAddForm((prev) => ({ ...prev, name: e.target.value }))
-              }
-              placeholder="e.g. Green Shirt"
-              disabled={addSubmitting}
-            />
-
-            <label className="modalLabel">ID (Slug - Auto)</label>
-            <div className="modalReadOnly">{slugPreview}</div>
-
-            <label className="modalLabel">Gender</label>
-            <div className="modalRadioRow">
-              <label className="modalRadio">
-                <input
-                  type="radio"
-                  name="add-gender"
-                  value="male"
-                  checked={addForm.gender === "male"}
-                  onChange={(e) =>
-                    setAddForm((prev) => ({ ...prev, gender: e.target.value }))
-                  }
-                  disabled={addSubmitting}
-                />
-                <span>Male</span>
-              </label>
-              <label className="modalRadio">
-                <input
-                  type="radio"
-                  name="add-gender"
-                  value="female"
-                  checked={addForm.gender === "female"}
-                  onChange={(e) =>
-                    setAddForm((prev) => ({ ...prev, gender: e.target.value }))
-                  }
-                  disabled={addSubmitting}
-                />
-                <span>Female</span>
-              </label>
+        <div className="modalOverlay" onClick={handleCloseAddModal}>
+          <div className="modalContent" onClick={(e) => e.stopPropagation()}>
+            <div className="modalHeader">
+              <h3 className="modalTitle">Add New Costume</h3>
+              <button
+                type="button"
+                className="modalCloseBtn"
+                onClick={handleCloseAddModal}
+                disabled={addSubmitting}
+              >
+                X
+              </button>
             </div>
 
-            <label className="modalLabel">Status</label>
-            <label className="modalCheckbox">
+            <form className="modalForm" onSubmit={handleAddSubmit}>
+              <label className="modalLabel" htmlFor="costume-name">
+                Name
+              </label>
               <input
-                type="checkbox"
-                checked={addForm.isActive}
+                id="costume-name"
+                type="text"
+                className="modalInput"
+                value={addForm.name}
                 onChange={(e) =>
-                  setAddForm((prev) => ({ ...prev, isActive: e.target.checked }))
+                  setAddForm((prev) => ({ ...prev, name: e.target.value }))
+                }
+                placeholder="e.g. Green Shirt"
+                disabled={addSubmitting}
+              />
+
+              <label className="modalLabel">ID (Slug - Auto)</label>
+              <div className="modalReadOnly">{slugPreview}</div>
+
+              <label className="modalLabel">Gender</label>
+              <div className="modalRadioRow">
+                <label className="modalRadio">
+                  <input
+                    type="radio"
+                    name="add-gender"
+                    value="male"
+                    checked={addForm.gender === "male"}
+                    onChange={(e) =>
+                      setAddForm((prev) => ({ ...prev, gender: e.target.value }))
+                    }
+                    disabled={addSubmitting}
+                  />
+                  <span>Male</span>
+                </label>
+                <label className="modalRadio">
+                  <input
+                    type="radio"
+                    name="add-gender"
+                    value="female"
+                    checked={addForm.gender === "female"}
+                    onChange={(e) =>
+                      setAddForm((prev) => ({ ...prev, gender: e.target.value }))
+                    }
+                    disabled={addSubmitting}
+                  />
+                  <span>Female</span>
+                </label>
+              </div>
+
+              <label className="modalLabel">Status</label>
+              <label className="modalCheckbox">
+                <input
+                  type="checkbox"
+                  checked={addForm.isActive}
+                  onChange={(e) =>
+                    setAddForm((prev) => ({ ...prev, isActive: e.target.checked }))
+                  }
+                  disabled={addSubmitting}
+                />
+                <span>Active</span>
+              </label>
+
+              <label className="modalLabel" htmlFor="costume-video">
+                Video File
+              </label>
+              <input
+                id="costume-video"
+                type="file"
+                className="modalFile"
+                accept=".mp4,.mov,.mkv,.webm,video/mp4,video/quicktime,video/webm,video/x-matroska"
+                onChange={(e) =>
+                  setAddForm((prev) => ({
+                    ...prev,
+                    video: e.target.files?.[0] || null,
+                  }))
                 }
                 disabled={addSubmitting}
               />
-              <span>Active</span>
-            </label>
 
-            <label className="modalLabel" htmlFor="costume-video">
-              Video File
-            </label>
-            <input
-              id="costume-video"
-              type="file"
-              className="modalFile"
-              accept=".mp4,.mov,.mkv,.webm,video/mp4,video/quicktime,video/webm,video/x-matroska"
-              onChange={(e) =>
-                setAddForm((prev) => ({
-                  ...prev,
-                  video: e.target.files?.[0] || null,
-                }))
-              }
-              disabled={addSubmitting}
-            />
+              <label className="modalLabel" htmlFor="costume-thumb">
+                Thumbnail File
+              </label>
+              <input
+                id="costume-thumb"
+                type="file"
+                className="modalFile"
+                accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                onChange={(e) =>
+                  setAddForm((prev) => ({
+                    ...prev,
+                    thumbnail: e.target.files?.[0] || null,
+                  }))
+                }
+                disabled={addSubmitting}
+              />
 
-            <label className="modalLabel" htmlFor="costume-thumb">
-              Thumbnail File
-            </label>
-            <input
-              id="costume-thumb"
-              type="file"
-              className="modalFile"
-              accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
-              onChange={(e) =>
-                setAddForm((prev) => ({
-                  ...prev,
-                  thumbnail: e.target.files?.[0] || null,
-                }))
-              }
-              disabled={addSubmitting}
-            />
+              {addError ? <div className="modalErrorText">{addError}</div> : null}
 
-            {addError ? <div className="modalErrorText">{addError}</div> : null}
+              <div className="modalActions">
+                <button
+                  type="button"
+                  className="modalBtnGhost"
+                  onClick={handleCloseAddModal}
+                  disabled={addSubmitting}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="modalBtnPrimary" disabled={addSubmitting}>
+                  {addSubmitting ? "Saving..." : "Save Costume"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isEditModalOpen && (
+        <div className="modalOverlay" onClick={handleCloseEditModal}>
+          <div className="modalContent" onClick={(e) => e.stopPropagation()}>
+            <div className="modalHeader">
+              <h3 className="modalTitle">Edit Costume</h3>
+              <button
+                type="button"
+                className="modalCloseBtn"
+                onClick={handleCloseEditModal}
+                disabled={editSubmitting}
+              >
+                X
+              </button>
+            </div>
+
+            <form className="modalForm" onSubmit={handleEditSubmit}>
+              <label className="modalLabel">Current ID</label>
+              <div className="modalReadOnly">{safeText(editForm.id)}</div>
+
+              <label className="modalLabel" htmlFor="edit-costume-name">
+                Name
+              </label>
+              <input
+                id="edit-costume-name"
+                type="text"
+                className="modalInput"
+                value={editForm.name}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, name: e.target.value }))
+                }
+                placeholder="e.g. Green Shirt"
+                disabled={editSubmitting}
+              />
+
+              <label className="modalLabel">ID (Slug - Follow Name)</label>
+              <div className="modalReadOnly">{editSlugPreview}</div>
+
+              <label className="modalLabel">Gender</label>
+              <div className="modalRadioRow">
+                <label className="modalRadio">
+                  <input
+                    type="radio"
+                    name="edit-gender"
+                    value="male"
+                    checked={editForm.gender === "male"}
+                    onChange={(e) =>
+                      setEditForm((prev) => ({ ...prev, gender: e.target.value }))
+                    }
+                    disabled={editSubmitting}
+                  />
+                  <span>Male</span>
+                </label>
+                <label className="modalRadio">
+                  <input
+                    type="radio"
+                    name="edit-gender"
+                    value="female"
+                    checked={editForm.gender === "female"}
+                    onChange={(e) =>
+                      setEditForm((prev) => ({ ...prev, gender: e.target.value }))
+                    }
+                    disabled={editSubmitting}
+                  />
+                  <span>Female</span>
+                </label>
+              </div>
+
+              <label className="modalLabel">Status</label>
+              <label className="modalCheckbox">
+                <input
+                  type="checkbox"
+                  checked={editForm.isActive}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, isActive: e.target.checked }))
+                  }
+                  disabled={editSubmitting}
+                />
+                <span>Active</span>
+              </label>
+
+              <label className="modalLabel" htmlFor="edit-costume-video">
+                Video File (Optional)
+              </label>
+              <input
+                id="edit-costume-video"
+                type="file"
+                className="modalFile"
+                accept=".mp4,.mov,.mkv,.webm,video/mp4,video/quicktime,video/webm,video/x-matroska"
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    video: e.target.files?.[0] || null,
+                  }))
+                }
+                disabled={editSubmitting}
+              />
+
+              <label className="modalLabel" htmlFor="edit-costume-thumb">
+                Thumbnail File (Optional)
+              </label>
+              <input
+                id="edit-costume-thumb"
+                type="file"
+                className="modalFile"
+                accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    thumbnail: e.target.files?.[0] || null,
+                  }))
+                }
+                disabled={editSubmitting}
+              />
+
+              {editError ? <div className="modalErrorText">{editError}</div> : null}
+
+              <div className="modalActions">
+                <button
+                  type="button"
+                  className="modalBtnGhost"
+                  onClick={handleCloseEditModal}
+                  disabled={editSubmitting}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="modalBtnPrimary" disabled={editSubmitting}>
+                  {editSubmitting ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {deleteModal.isOpen && (
+        <div className="modalOverlay" onClick={handleCloseDeleteModal}>
+          <div className="modalContent modalConfirmContent" onClick={(e) => e.stopPropagation()}>
+            <div className="modalHeader">
+              <h3 className="modalTitle">Confirm</h3>
+              <button
+                type="button"
+                className="modalCloseBtn"
+                onClick={handleCloseDeleteModal}
+                disabled={deleteSubmitting}
+              >
+                X
+              </button>
+            </div>
+
+            <p className="modalConfirmText">
+              Yakin mau delete costume <strong>{deleteModal.name}</strong>?
+            </p>
+
+            {deleteError ? <div className="modalErrorText">{deleteError}</div> : null}
 
             <div className="modalActions">
               <button
                 type="button"
                 className="modalBtnGhost"
-                onClick={handleCloseAddModal}
-                disabled={addSubmitting}
+                onClick={handleCloseDeleteModal}
+                disabled={deleteSubmitting}
               >
                 Cancel
               </button>
-              <button type="submit" className="modalBtnPrimary" disabled={addSubmitting}>
-                {addSubmitting ? "Saving..." : "Save Costume"}
+              <button
+                type="button"
+                className="modalBtnDanger"
+                onClick={handleConfirmDelete}
+                disabled={deleteSubmitting}
+              >
+                {deleteSubmitting ? "Deleting..." : "Confirm Delete"}
               </button>
             </div>
-          </form>
+          </div>
         </div>
-      </div>
-    )}
+      )}
     </div>
   );
 }
