@@ -473,6 +473,13 @@
   text-shadow: 0 10px 24px rgba(2, 18, 52, 0.45);
 }
 
+.costumeMeta {
+  margin-top: -4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(218, 242, 255, 0.92);
+}
+
 .costumeGenderWrap {
   display: grid;
   gap: 10px;
@@ -1066,10 +1073,30 @@
   box-shadow: 0 20px 60px rgba(66, 90, 170, 0.25);
 }
 
+.modalCardError {
+  border: 1px solid rgba(210, 74, 98, 0.24);
+  box-shadow: 0 20px 60px rgba(210, 74, 98, 0.18);
+}
+
+.modalLoadingCard {
+  width: min(360px, 90vw);
+  padding: 24px 20px;
+}
+
 .modalTitle {
   font-weight: 800;
   font-size: 18px;
   color: #2b3763;
+}
+
+.modalSpinner {
+  width: 44px;
+  height: 44px;
+  justify-self: center;
+  border-radius: 999px;
+  border: 4px solid rgba(87, 121, 211, 0.18);
+  border-top-color: #4d73db;
+  animation: spin 0.9s linear infinite;
 }
 
 .modalSub {

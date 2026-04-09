@@ -70,6 +70,9 @@ export default function App() {
   const [pendingCapture, setPendingCapture] = useState("");
   const [captureSubmitting, setCaptureSubmitting] = useState(false);
   const [captureError, setCaptureError] = useState("");
+  const [captureResultStatus, setCaptureResultStatus] = useState("");
+  const [captureResultTitle, setCaptureResultTitle] = useState("");
+  const [captureResultSub, setCaptureResultSub] = useState("");
   const [captureSource, setCaptureSource] = useState("camera");
   const [selectedFileName, setSelectedFileName] = useState("");
   const [selectedCostumeId, setSelectedCostumeId] = useState("");
@@ -112,6 +115,9 @@ export default function App() {
     const start = costumePageIndex * COSTUMES_PER_PAGE;
     return costumeOptions.slice(start, start + COSTUMES_PER_PAGE);
   }, [costumeOptions, costumePageIndex]);
+  const selectedGenderLabel = formData.gender
+    ? formData.gender.charAt(0).toUpperCase() + formData.gender.slice(1)
+    : "";
 
   useEffect(() => {
     if (!costumeOptions.length) {
@@ -362,9 +368,12 @@ export default function App() {
       setPendingCapture(dataUrl);
       setCaptureSource("camera");
       setSelectedFileName("");
-      setShowCaptureModal(true);
-
       setStatus("Photo captured");
+      await processPendingCapture({
+        image: dataUrl,
+        source: "camera",
+        fileName: "",
+      });
     } catch (e) {
       console.error(e);
       setError(e?.message || String(e));
@@ -384,6 +393,18 @@ export default function App() {
       reader.onerror = () => reject(new Error("Failed to read selected file"));
       reader.readAsDataURL(file);
     });
+
+  const resetCaptureModal = () => {
+    setShowCaptureModal(false);
+    setPendingCapture("");
+    setCaptureError("");
+    setCaptureFilename("");
+    setCaptureResultStatus("");
+    setCaptureResultTitle("");
+    setCaptureResultSub("");
+    setSelectedFileName("");
+    setLastShot(null);
+  };
 
   const handleGalleryClick = () => {
     if (isBusy || countdown > 0 || captureSubmitting) return;
@@ -419,8 +440,12 @@ export default function App() {
       setPendingCapture(dataUrl);
       setCaptureSource("gallery");
       setSelectedFileName(file.name);
-      setShowCaptureModal(true);
       setStatus("Gallery photo selected");
+      await processPendingCapture({
+        image: dataUrl,
+        source: "gallery",
+        fileName: file.name,
+      });
     } catch (err) {
       const message = err?.message || String(err);
       setError(message);
@@ -432,13 +457,21 @@ export default function App() {
     }
   };
 
-  const processPendingCapture = async () => {
-    if (!pendingCapture || isBusy || captureSubmitting) return;
+  const processPendingCapture = async (options = {}) => {
+    const image = options.image ?? pendingCapture;
+    const source = options.source ?? captureSource;
+    const fileName = options.fileName ?? selectedFileName;
+
+    if (!image || isBusy || captureSubmitting) return;
 
     try {
       setError("");
       setCaptureError("");
+      setCaptureResultStatus("");
+      setCaptureResultTitle("");
+      setCaptureResultSub("");
       setCaptureSubmitting(true);
+      setShowCaptureModal(false);
 
       // reset state job lama
       setCaptureFilename("");
@@ -455,7 +488,7 @@ export default function App() {
       const confirmRes = await fetch(`${API_BASE_URL}/capture-confirmation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: pendingCapture }),
+        body: JSON.stringify({ image }),
       });
       const confirmJson = await confirmRes.json();
       if (!confirmRes.ok || confirmJson?.ok === false) {
@@ -482,7 +515,7 @@ export default function App() {
       const res = await fetch(`${API_BASE_URL}/capture`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: pendingCapture }),
+        body: JSON.stringify({ image }),
       });
 
       const json = await res.json();
@@ -492,16 +525,29 @@ export default function App() {
 
       setCaptureFilename(json.filename);
       setStatus(`Photo saved: ${json.filename}`);
-      setShowCaptureModal(false);
-
-      await startSwapJob(json.filename);
-
-      setStatus("Done");
+      setCaptureSource(source);
+      setSelectedFileName(fileName);
+      setPendingCapture(image);
+      setCaptureResultStatus("success");
+      setCaptureResultTitle(
+        source === "gallery"
+          ? "Foto galeri berhasil diupload"
+          : "Foto berhasil di-capture"
+      );
+      setCaptureResultSub("Klik Lanjutkan untuk generate video.");
+      setShowCaptureModal(true);
     } catch (e) {
       console.error(e);
       const message = e?.message || String(e);
       setError(message);
       setCaptureError(message);
+      setCaptureSource(source);
+      setSelectedFileName(fileName);
+      setPendingCapture(image);
+      setCaptureResultStatus("error");
+      setCaptureResultTitle("Capture gagal");
+      setCaptureResultSub("Detail error dari backend ditampilkan di bawah.");
+      setShowCaptureModal(true);
       setStatus("Error");
       setJobStatus("");
       setJobStage("error");
@@ -511,6 +557,26 @@ export default function App() {
       if (!error) {
         setTimeout(() => setStatus("Camera ready"), 1200);
       }
+    }
+  };
+
+  const handleCaptureResultContinue = async () => {
+    if (!captureFilename || captureSubmitting) return;
+
+    try {
+      setShowCaptureModal(false);
+      await startSwapJob(captureFilename);
+      setStatus("Done");
+    } catch (e) {
+      console.error(e);
+      const message = e?.message || String(e);
+      setError(message);
+      setCaptureError(message);
+      setCaptureResultStatus("error");
+      setCaptureResultTitle("Generate video gagal");
+      setCaptureResultSub("Proses tidak bisa dilanjutkan. Cek pesan error di bawah.");
+      setShowCaptureModal(true);
+      setStatus("Error");
     }
   };
 
@@ -674,6 +740,13 @@ export default function App() {
             </div>
           </div>
           <h2 className="costumeTitle">Choose Costume</h2>
+          {formData.gender ? (
+            <div className="costumeMeta">
+              Menampilkan {visibleCostumes.length} dari {costumeOptions.length} costume
+              untuk gender {selectedGenderLabel}. Maksimal {COSTUMES_PER_PAGE} item per
+              halaman.
+            </div>
+          ) : null}
 
           {costumesLoading ? (
             <div className="costumeEmpty">Loading costumes...</div>
@@ -857,16 +930,20 @@ export default function App() {
 
       {showCaptureModal ? (
         <div className="modalOverlay">
-          <div className="modalCard">
+          <div
+            className={`modalCard ${
+              captureResultStatus === "error" ? "modalCardError" : ""
+            }`}
+          >
             <div className="modalTitle">
-              {captureSource === "gallery"
-                ? "Foto galeri siap diupload"
-                : "Foto berhasil di capture"}
+              {captureResultTitle ||
+                (captureSource === "gallery"
+                  ? "Foto galeri berhasil diupload"
+                  : "Foto berhasil di-capture")}
             </div>
             <div className="modalSub">
-              {captureSource === "gallery"
-                ? "Klik Submit untuk kirim ke backend."
-                : "Lanjutkan generate video?"}
+              {captureResultSub ||
+                "Klik Lanjutkan untuk generate video."}
             </div>
             {captureSource === "gallery" && selectedFileName ? (
               <div className="modalMeta">{selectedFileName}</div>
@@ -880,28 +957,36 @@ export default function App() {
             <div className="modalActions">
               <button
                 className="btn ghost"
-                onClick={() => {
-                  setShowCaptureModal(false);
-                  setPendingCapture("");
-                  setCaptureError("");
-                  setSelectedFileName("");
-                }}
+                onClick={resetCaptureModal}
                 disabled={captureSubmitting}
               >
                 Ulangi
               </button>
-              <button
-                className="btn primary"
-                onClick={processPendingCapture}
-                disabled={captureSubmitting}
-              >
-                {captureSubmitting
-                  ? "Tunggu..."
-                  : captureSource === "gallery"
-                    ? "Submit"
-                    : "Lanjutkan"}
-              </button>
+              {captureResultStatus === "success" ? (
+                <button
+                  className="btn primary"
+                  onClick={handleCaptureResultContinue}
+                  disabled={captureSubmitting}
+                >
+                  Lanjutkan
+                </button>
+              ) : null}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {captureSubmitting ? (
+        <div className="modalOverlay">
+          <div className="modalCard modalLoadingCard">
+            <div className="modalSpinner" />
+            <div className="modalTitle">Memproses capture...</div>
+            <div className="modalSub">
+              Tunggu sebentar, sistem sedang cek wajah dan upload foto.
+            </div>
+            {lastShot ? (
+              <img className="modalPreview" src={lastShot} alt="preview" />
+            ) : null}
           </div>
         </div>
       ) : null}
