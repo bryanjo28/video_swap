@@ -60,6 +60,8 @@ export default function App() {
     consent: false,
   });
   const [formTouched, setFormTouched] = useState(false);
+  const [genderTouched, setGenderTouched] = useState(false);
+  const [genderWarning, setGenderWarning] = useState("");
 
   const [status, setStatus] = useState("Ready");
   const [error, setError] = useState("");
@@ -85,7 +87,7 @@ export default function App() {
   const [captureFilename, setCaptureFilename] = useState("");
 
   const [jobId, setJobId] = useState("");
-  const [jobStatus, setJobStatus] = useState(""); // queued/running/done/error
+  const [jobStatus, setJobStatus] = useState("");
   const [progress, setProgress] = useState(0);
   const [speedFps, setSpeedFps] = useState(0);
   const [jobMessage, setJobMessage] = useState("");
@@ -107,17 +109,32 @@ export default function App() {
       (item) => item.isActive && item.gender === selectedGender
     );
   }, [allCostumes, formData.gender]);
+
   const totalCostumePages = Math.max(
     1,
     Math.ceil(costumeOptions.length / COSTUMES_PER_PAGE)
   );
+
   const visibleCostumes = useMemo(() => {
     const start = costumePageIndex * COSTUMES_PER_PAGE;
     return costumeOptions.slice(start, start + COSTUMES_PER_PAGE);
   }, [costumeOptions, costumePageIndex]);
+
+  const genderAvailability = useMemo(() => {
+    const activeCostumes = allCostumes.filter((item) => item.isActive);
+    return {
+      male: activeCostumes.some((item) => item.gender === "male"),
+      female: activeCostumes.some((item) => item.gender === "female"),
+    };
+  }, [allCostumes]);
+
   const selectedGenderLabel = formData.gender
     ? formData.gender.charAt(0).toUpperCase() + formData.gender.slice(1)
     : "";
+
+  const canContinue = formData.consent;
+  const showConsentError = formTouched && !formData.consent;
+  const showGenderError = genderTouched && !formData.gender;
 
   useEffect(() => {
     if (!costumeOptions.length) {
@@ -133,6 +150,44 @@ export default function App() {
     setCostumePageIndex((current) => Math.min(current, totalCostumePages - 1));
   }, [costumeOptions, totalCostumePages]);
 
+  const resetJobState = () => {
+    setJobId("");
+    setJobStatus("");
+    setProgress(0);
+    setSpeedFps(0);
+    setJobMessage("");
+    setJobStage("queued");
+    setProcessedFrames(0);
+    setTotalFrames(0);
+    setPreviewUrl("");
+  };
+
+  const resetFlow = () => {
+    setPage("welcome");
+    setFormData({ gender: "", consent: false });
+    setFormTouched(false);
+    setGenderTouched(false);
+    setGenderWarning("");
+    setStatus("Ready");
+    setError("");
+    setIsBusy(false);
+    setCountdown(0);
+    setShowCaptureModal(false);
+    setPendingCapture("");
+    setCaptureSubmitting(false);
+    setCaptureError("");
+    setCaptureResultStatus("");
+    setCaptureResultTitle("");
+    setCaptureResultSub("");
+    setCaptureSource("camera");
+    setSelectedFileName("");
+    setSelectedCostumeId("");
+    setCostumePageIndex(0);
+    setLastShot(null);
+    setCaptureFilename("");
+    resetJobState();
+  };
+
   const loadCostumes = async () => {
     try {
       setCostumesLoading(true);
@@ -145,9 +200,7 @@ export default function App() {
       }
 
       const sourceItems = Array.isArray(json?.items) ? json.items : [];
-      const mappedItems = sourceItems
-        .map(normalizeCostumeItem)
-        .filter(Boolean);
+      const mappedItems = sourceItems.map(normalizeCostumeItem).filter(Boolean);
 
       setAllCostumes(mappedItems);
       console.log("[costume] loaded", mappedItems);
@@ -161,13 +214,14 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (page !== "costume") return;
+    if (page !== "gender" && page !== "costume") return;
     if (allCostumes.length || costumesLoading) return;
     loadCostumes();
   }, [page, allCostumes.length, costumesLoading]);
 
   useEffect(() => {
     if (page !== "capture") return;
+
     const startCamera = async () => {
       try {
         setError("");
@@ -201,17 +255,17 @@ export default function App() {
 
     return () => {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
   }, [page]);
 
-
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const runCountdown = async (sec = 3) => {
     setCountdown(sec);
-    for (let t = sec; t >= 1; t--) {
+    for (let t = sec; t >= 1; t -= 1) {
       setCountdown(t);
       await sleep(700);
     }
@@ -241,7 +295,6 @@ export default function App() {
       const shellRect = frameShell.getBoundingClientRect();
       const ovalRect = faceOval.getBoundingClientRect();
       if (shellRect.width > 0 && shellRect.height > 0) {
-        // Map crop area exactly like CSS object-fit: cover in the frame.
         const shellW = shellRect.width;
         const shellH = shellRect.height;
         const coverScale = Math.max(shellW / sourceW, shellH / sourceH);
@@ -257,31 +310,36 @@ export default function App() {
         const rawSrcW = ovalRect.width / coverScale;
         const rawSrcH = ovalRect.height / coverScale;
 
-        const srcX = Math.max(0, Math.round(rawSrcX));
-        const srcY = Math.max(0, Math.round(rawSrcY));
-        const srcW = Math.max(
+        const paddingX = rawSrcW * 0.16;
+        const paddingY = rawSrcH * 0.2;
+        const paddedSrcX = Math.max(0, Math.round(rawSrcX - paddingX));
+        const paddedSrcY = Math.max(0, Math.round(rawSrcY - paddingY));
+        const paddedSrcW = Math.max(
           1,
-          Math.min(sourceW - srcX, Math.round(rawSrcW))
+          Math.min(sourceW - paddedSrcX, Math.round(rawSrcW + paddingX * 2))
         );
-        const srcH = Math.max(
+        const paddedSrcH = Math.max(
           1,
-          Math.min(sourceH - srcY, Math.round(rawSrcH))
+          Math.min(sourceH - paddedSrcY, Math.round(rawSrcH + paddingY * 2))
         );
 
-        const ovalCanvas = document.createElement("canvas");
-        ovalCanvas.width = srcW;
-        ovalCanvas.height = srcH;
-        const ovalCtx = ovalCanvas.getContext("2d");
+        const cropCanvas = document.createElement("canvas");
+        cropCanvas.width = paddedSrcW;
+        cropCanvas.height = paddedSrcH;
+        const cropCtx = cropCanvas.getContext("2d");
+        cropCtx.drawImage(
+          canvas,
+          paddedSrcX,
+          paddedSrcY,
+          paddedSrcW,
+          paddedSrcH,
+          0,
+          0,
+          paddedSrcW,
+          paddedSrcH
+        );
 
-        // Clip to exact oval so only portrait area is exported.
-        ovalCtx.save();
-        ovalCtx.beginPath();
-        ovalCtx.ellipse(srcW / 2, srcH / 2, srcW / 2, srcH / 2, 0, 0, Math.PI * 2);
-        ovalCtx.clip();
-        ovalCtx.drawImage(canvas, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
-        ovalCtx.restore();
-
-        return ovalCanvas.toDataURL("image/png");
+        return cropCanvas.toDataURL("image/jpeg", 0.95);
       }
     }
 
@@ -290,45 +348,37 @@ export default function App() {
 
   const pollJob = async (id) => {
     while (true) {
-      const r = await fetch(`${API_BASE_URL}/status/${id}`);
-      const j = await r.json();
+      const response = await fetch(`${API_BASE_URL}/status/${id}`);
+      const json = await response.json();
 
-      if (!r.ok || j.ok === false) {
-        throw new Error(j.detail || j.message || "Failed to read job status");
+      if (!response.ok || json.ok === false) {
+        throw new Error(json.detail || json.message || "Failed to read job status");
       }
 
-      setJobStatus(j.status || "");
-      setProgress(Number(j.progress || 0));
-      setSpeedFps(Number(j.speed_fps || 0));
-      setJobMessage(j.message || "");
-      setJobStage(String(j.stage || ""));
-      setProcessedFrames(Number(j.processed_frames || 0));
-      setTotalFrames(Number(j.total_frames || 0));
+      setJobStatus(json.status || "");
+      setProgress(Number(json.progress || 0));
+      setSpeedFps(Number(json.speed_fps || 0));
+      setJobMessage(json.message || "");
+      setJobStage(String(json.stage || ""));
+      setProcessedFrames(Number(json.processed_frames || 0));
+      setTotalFrames(Number(json.total_frames || 0));
 
-      if (j.status === "done") return j;
-      if (j.status === "error") throw new Error(j.message || "Processing error");
+      if (json.status === "done") return json;
+      if (json.status === "error") throw new Error(json.message || "Processing error");
 
       await sleep(600);
     }
   };
 
-  const startSwapJob = async (filename) => {
-    setStatus("Starting swap job...");
-    setJobId("");
+  const startSwapJob = async (filename, costumeId) => {
+    resetJobState();
     setJobStatus("queued");
-    setProgress(0);
-    setSpeedFps(0);
     setJobMessage("Queued");
-    setJobStage("queued");
-    setProcessedFrames(0);
-    setTotalFrames(0);
-    setPreviewUrl("");
 
     const startPayload = {
       capture_filename: filename,
-      costume_id: selectedCostumeId || undefined,
+      costume_id: costumeId || undefined,
     };
-    console.log("[start] payload", startPayload);
 
     const res = await fetch(`${API_BASE_URL}/start`, {
       method: "POST",
@@ -337,19 +387,15 @@ export default function App() {
     });
 
     const json = await res.json();
-    console.log("[start] response", json);
     if (!res.ok || json.ok === false) {
       throw new Error(json.detail || "Failed to start job");
     }
 
     const id = json.job_id;
     setJobId(id);
-    setStatus("Processing video...");
     const donePayload = await pollJob(id);
-    if (donePayload?.preview_url) {
-      setPreviewUrl(donePayload.preview_url);
-    }
-    setPage("preview");
+    setStatus("Done");
+    return donePayload;
   };
 
   const captureOnly = async () => {
@@ -358,7 +404,6 @@ export default function App() {
     try {
       setError("");
       setIsBusy(true);
-
       setStatus("Preparing...");
       await runCountdown(3);
 
@@ -369,6 +414,7 @@ export default function App() {
       setCaptureSource("camera");
       setSelectedFileName("");
       setStatus("Photo captured");
+
       await processPendingCapture({
         image: dataUrl,
         source: "camera",
@@ -378,11 +424,7 @@ export default function App() {
       console.error(e);
       setError(e?.message || String(e));
       setStatus("Error");
-    } finally {
       setIsBusy(false);
-      if (!error) {
-        setTimeout(() => setStatus("Camera ready"), 1200);
-      }
     }
   };
 
@@ -413,15 +455,25 @@ export default function App() {
 
   const handleCostumeSelect = (costumeId) => {
     setSelectedCostumeId(costumeId);
-    console.log("[costume] selected", {
-      costume_id: costumeId,
-      gender: formData.gender,
-    });
   };
 
-  const handleGalleryFileChange = async (e) => {
+  const handleGenderSelect = (gender) => {
+    if (!genderAvailability[gender]) {
+      setGenderWarning(
+        `Costume untuk gender ${
+          gender === "male" ? "Male" : "Female"
+        } tidak tersedia saat ini.`
+      );
+      return;
+    }
+
+    setGenderWarning("");
+    setFormData((prev) => ({ ...prev, gender }));
+  };
+
+  const handleGalleryFileChange = async (event) => {
     try {
-      const file = e.target.files?.[0];
+      const file = event.target.files?.[0];
       if (!file) return;
 
       if (!file.type?.startsWith("image/")) {
@@ -441,6 +493,7 @@ export default function App() {
       setCaptureSource("gallery");
       setSelectedFileName(file.name);
       setStatus("Gallery photo selected");
+
       await processPendingCapture({
         image: dataUrl,
         source: "gallery",
@@ -472,17 +525,8 @@ export default function App() {
       setCaptureResultSub("");
       setCaptureSubmitting(true);
       setShowCaptureModal(false);
-
-      // reset state job lama
       setCaptureFilename("");
-      setJobId("");
-      setJobStatus("");
-      setProgress(0);
-      setSpeedFps(0);
-      setJobMessage("");
-      setJobStage("queued");
-      setProcessedFrames(0);
-      setTotalFrames(0);
+      resetJobState();
 
       setStatus("Checking face...");
       const confirmRes = await fetch(`${API_BASE_URL}/capture-confirmation`, {
@@ -532,9 +576,9 @@ export default function App() {
       setCaptureResultTitle(
         source === "gallery"
           ? "Foto galeri berhasil diupload"
-          : "Foto berhasil di-capture"
+          : "Foto berhasil diambil"
       );
-      setCaptureResultSub("Klik Lanjutkan untuk generate video.");
+      setCaptureResultSub("Lanjutkan ke pilih seragam.");
       setShowCaptureModal(true);
     } catch (e) {
       console.error(e);
@@ -549,47 +593,69 @@ export default function App() {
       setCaptureResultSub("Detail error dari backend ditampilkan di bawah.");
       setShowCaptureModal(true);
       setStatus("Error");
-      setJobStatus("");
       setJobStage("error");
     } finally {
       setCaptureSubmitting(false);
       setIsBusy(false);
-      if (!error) {
-        setTimeout(() => setStatus("Camera ready"), 1200);
-      }
+      setTimeout(() => {
+        setStatus((current) => (current === "Error" ? current : "Camera ready"));
+      }, 1200);
     }
   };
 
-  const handleCaptureResultContinue = async () => {
-    if (!captureFilename || captureSubmitting) return;
+  const handleCaptureResultContinue = () => {
+    if (captureResultStatus !== "success" || !captureFilename) return;
+    setShowCaptureModal(false);
+    setPage("costume");
+  };
+
+  const handleStartProcessing = async () => {
+    if (!captureFilename || !selectedCostumeId) return;
 
     try {
-      setShowCaptureModal(false);
-      await startSwapJob(captureFilename);
-      setStatus("Done");
+      const filename = captureFilename;
+      const costumeId = selectedCostumeId;
+      setError("");
+      resetFlow();
+      await startSwapJob(filename, costumeId);
     } catch (e) {
       console.error(e);
       const message = e?.message || String(e);
       setError(message);
-      setCaptureError(message);
-      setCaptureResultStatus("error");
-      setCaptureResultTitle("Generate video gagal");
-      setCaptureResultSub("Proses tidak bisa dilanjutkan. Cek pesan error di bawah.");
-      setShowCaptureModal(true);
       setStatus("Error");
+      setPage("costume");
     }
   };
 
   const downloadUrl = jobId ? `${API_BASE_URL}/download/${jobId}` : "";
 
-  const canContinue = formData.consent;
-  const showConsentError = formTouched && !formData.consent;
-
-  const handleContinue = () => {
+  const handleConcernContinue = () => {
     setFormTouched(true);
     if (!canContinue) return;
-    setPage("costume");
+    setPage("gender");
   };
+
+  const handleGenderContinue = () => {
+    setGenderTouched(true);
+    if (!formData.gender) return;
+    setPage("capture");
+  };
+
+  const handleBackFromPreview = () => {
+    resetFlow();
+  };
+
+  const processingProgress = Math.max(
+    0,
+    Math.min(100, Number.isFinite(progress) ? Math.round(progress) : 0)
+  );
+  const hasFrameCounters = totalFrames > 0;
+  const stageLabel = STAGE_LABELS[jobStage] || jobMessage || "Processing video...";
+  const processingMeta = hasFrameCounters
+    ? `${Math.min(processedFrames, totalFrames)}/${totalFrames} frames`
+    : speedFps > 0
+      ? `${speedFps.toFixed(2)} FPS`
+      : stageLabel;
 
   if (page === "welcome") {
     return (
@@ -622,7 +688,7 @@ export default function App() {
           <button
             type="button"
             className="welcomeButton"
-            onClick={() => setPage("intro")}
+            onClick={() => setPage("concern")}
           >
             <span>Get Started</span>
             <span aria-hidden="true">&gt;</span>
@@ -632,11 +698,11 @@ export default function App() {
     );
   }
 
-  if (page === "intro") {
+  if (page === "concern") {
     return (
-      <div className="introPage">
-        <div className="introGlow introGlowA" />
-        <div className="introGlow introGlowB" />
+      <div className="stagePage">
+        <div className="stageGlow stageGlowA" />
+        <div className="stageGlow stageGlowB" />
         <div className="welcomeBrand">
           <img
             className="welcomeBrandLogo"
@@ -648,43 +714,136 @@ export default function App() {
             }}
           />
         </div>
-        <div className="introCard">
-          <div className="introAvatar">
-            <img className="introAvatarImg" src={aiFace} alt="AI face" />
+        <div className="stageCard concernCard">
+          <div className="concernAvatar">
+            <div className="concernAvatarRing">
+              <img className="concernAvatarImage" src={aiFace} alt="AI assistant" />
+            </div>
           </div>
-          <div className="introStep">Step 1 of 2</div>
-          <div className="introTitle">Data Pengguna</div>
-          <div className="introSub">
-            Silakan centang persetujuan sebelum lanjut pilih costume.
+          <div className="stageStep">Concern</div>
+          <div className="stageTitle">Data Pengguna</div>
+          <div className="stageSub">
+            Mohon persetujuan penggunaan foto untuk proses AI face swap.
           </div>
-
-          <div className="introField">
-            <label className="introCheckbox">
-              <input
-                type="checkbox"
-                checked={formData.consent}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, consent: e.target.checked }))
-                }
-              />
-              <span>
-                Saya setuju menggunakan foto saya untuk proses face swap
-              </span>
-            </label>
-            {showConsentError ? (
-              <div className="introError">Anda harus menyetujui syarat ini.</div>
-            ) : null}
+          <label className="consentCard">
+            <input
+              type="checkbox"
+              checked={formData.consent}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, consent: e.target.checked }))
+              }
+            />
+            <span className="consentCopy">
+              Saya setuju foto saya digunakan untuk proses face swap pada aplikasi
+              ini.
+            </span>
+          </label>
+          {showConsentError ? (
+            <div className="stageError">Anda harus menyetujui syarat ini.</div>
+          ) : null}
+          <div className="concernActions">
+            <button
+              type="button"
+              className="stagePrimaryButton concernPrimaryButton"
+              onClick={handleConcernContinue}
+            >
+              Lanjut
+            </button>
           </div>
-
           <button
-            className="introButton"
             type="button"
-            onClick={handleContinue}
+            className="concernBackLink"
+            onClick={() => setPage("welcome")}
           >
-            Lanjutkan
+            Kembali ke halaman awal
           </button>
-          <div className="introHint">
-            Selanjutnya kamu akan pilih gender dan costume.
+        </div>
+      </div>
+    );
+  }
+
+  if (page === "gender") {
+    return (
+      <div className="stagePage">
+        <div className="stageGlow stageGlowA" />
+        <div className="stageGlow stageGlowB" />
+        <div className="welcomeBrand">
+          <img
+            className="welcomeBrandLogo"
+            src="/src/assets/BCA_white.png"
+            alt="BCA"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = logoBcaFallback;
+            }}
+          />
+        </div>
+        <div className="stageCard">
+          <div className="stageStep">Pilih Gender</div>
+          <div className="stageTitle">Choose Gender</div>
+          <div className="stageSub">
+            Pilih gender terlebih dahulu untuk menampilkan pilihan seragam yang
+            sesuai.
+          </div>
+          <div className="genderChoiceGrid">
+            <button
+              type="button"
+              className={`genderChoiceCard ${
+                formData.gender === "male" ? "isActive" : ""
+              }`}
+              onClick={() => handleGenderSelect("male")}
+              disabled={costumesLoading || !genderAvailability.male}
+            >
+              <span className="genderBadge maleBadge">M</span>
+              <span className="genderChoiceLabel">Male</span>
+              {!costumesLoading && !genderAvailability.male ? (
+                <span className="genderChoiceHint">Costume belum tersedia</span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              className={`genderChoiceCard ${
+                formData.gender === "female" ? "isActive" : ""
+              }`}
+              onClick={() => handleGenderSelect("female")}
+              disabled={costumesLoading || !genderAvailability.female}
+            >
+              <span className="genderBadge femaleBadge">F</span>
+              <span className="genderChoiceLabel">Female</span>
+              {!costumesLoading && !genderAvailability.female ? (
+                <span className="genderChoiceHint">Costume belum tersedia</span>
+              ) : null}
+            </button>
+          </div>
+          {costumesLoading ? (
+            <div className="stageInfo">Sedang cek ketersediaan costume...</div>
+          ) : null}
+          {!costumesLoading &&
+          !genderAvailability.male &&
+          !genderAvailability.female ? (
+            <div className="stageError">
+              Belum ada data costume aktif. Silakan tambahkan costume terlebih dahulu.
+            </div>
+          ) : null}
+          {genderWarning ? <div className="stageError">{genderWarning}</div> : null}
+          {showGenderError ? (
+            <div className="stageError">Pilih gender dulu sebelum lanjut.</div>
+          ) : null}
+          <div className="stageActions">
+            <button
+              type="button"
+              className="stageGhostButton"
+              onClick={() => setPage("concern")}
+            >
+              Kembali
+            </button>
+            <button
+              type="button"
+              className="stagePrimaryButton"
+              onClick={handleGenderContinue}
+            >
+              Lanjut
+            </button>
           </div>
         </div>
       </div>
@@ -707,44 +866,16 @@ export default function App() {
         </div>
 
         <div className="costumeCard">
-          <div className="costumeStep">Step 2 of 2</div>
-          <div className="costumeGenderWrap">
-            <div className="costumeGenderLabel">Choose Gender</div>
-            <div className="costumeGenderRow">
-              <button
-                type="button"
-                className={`genderBtn ${
-                  formData.gender === "male" ? "isActive" : ""
-                }`}
-                onClick={() =>
-                  setFormData((prev) => ({ ...prev, gender: "male" }))
-                }
-                aria-label="Male"
-              >
-                <span className="genderIcon maleIcon">♂</span>
-                <span className="genderText">Male</span>
-              </button>
-              <button
-                type="button"
-                className={`genderBtn ${
-                  formData.gender === "female" ? "isActive" : ""
-                }`}
-                onClick={() =>
-                  setFormData((prev) => ({ ...prev, gender: "female" }))
-                }
-                aria-label="Female"
-              >
-                <span className="genderIcon femaleIcon">♀</span>
-                <span className="genderText">Female</span>
-              </button>
-            </div>
-          </div>
+          <div className="costumeStep">Pilih Seragam</div>
           <h2 className="costumeTitle">Choose Costume</h2>
-          {formData.gender ? (
-            <div className="costumeMeta">
-              Menampilkan {visibleCostumes.length} dari {costumeOptions.length} costume
-              untuk gender {selectedGenderLabel}. Maksimal {COSTUMES_PER_PAGE} item per
-              halaman.
+          <div className="costumeMeta">
+            Menampilkan {visibleCostumes.length} dari {costumeOptions.length} seragam
+            untuk gender {selectedGenderLabel || "-"}.
+          </div>
+
+          {captureFilename ? (
+            <div className="costumeCaptureNotice">
+              Foto sudah tersimpan. Kamu bisa kembali bila ingin ambil ulang.
             </div>
           ) : null}
 
@@ -806,9 +937,7 @@ export default function App() {
             </div>
           ) : (
             <div className="costumeEmpty">
-              {formData.gender
-                ? `Belum ada costume aktif untuk gender ${formData.gender}.`
-                : "Pilih gender dulu untuk melihat costume."}
+              Belum ada costume aktif untuk gender {formData.gender || "-"}.
             </div>
           )}
 
@@ -818,21 +947,23 @@ export default function App() {
             </div>
           ) : null}
 
+          {error ? <div className="costumeInlineError">{error}</div> : null}
+
           <div className="costumeActionsRow">
             <button
               type="button"
               className="costumeBack"
-              onClick={() => setPage("intro")}
+              onClick={() => setPage("capture")}
             >
-              Back
+              Kembali
             </button>
             <button
               type="button"
               className="costumeNext"
-              onClick={() => setPage("capture")}
-              disabled={!selectedCostumeId}
+              onClick={handleStartProcessing}
+              disabled={!selectedCostumeId || !captureFilename}
             >
-              Next
+              Proses AI
             </button>
           </div>
         </div>
@@ -840,21 +971,56 @@ export default function App() {
     );
   }
 
-  const handleBackFromPreview = () => {
-    setPage("welcome");
-    // Reset job state so capture countdown overlay can show again.
-    setJobId("");
-    setJobStatus("");
-    setProgress(0);
-    setSpeedFps(0);
-    setJobMessage("");
-    setJobStage("queued");
-    setProcessedFrames(0);
-    setTotalFrames(0);
-    setPreviewUrl("");
-    setIsBusy(false);
-    setCountdown(0);
-  };
+  if (page === "processing") {
+    return (
+      <div className="processingPage">
+        <div className="welcomeBrand">
+          <img
+            className="welcomeBrandLogo"
+            src="/src/assets/BCA_white.png"
+            alt="BCA"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = logoBcaFallback;
+            }}
+          />
+        </div>
+        <div className="processingCard">
+          <video
+            className="processingPreviewVideo"
+            src={processingVideo}
+            autoPlay
+            loop
+            muted
+            playsInline
+          />
+          <div className="processingStepLabel">Loading</div>
+          <div className="processingTitle">Proses face swap oleh AI</div>
+          <div className="processingSub">{jobMessage || stageLabel}</div>
+          <div className="processingProgressWrap">
+            <div
+              className="processingProgressTrack"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={processingProgress}
+            >
+              <div
+                className="processingProgressFill"
+                style={{ width: `${processingProgress}%` }}
+              />
+            </div>
+            <div className="processingProgressText">{processingProgress}%</div>
+          </div>
+          <div className="processingMetaRow">
+            {jobStatus ? <span>Status: {jobStatus}</span> : null}
+            <span>{processingMeta}</span>
+            {selectedCostumeId ? <span>Costume selected</span> : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (page === "preview") {
     return (
@@ -866,18 +1032,6 @@ export default function App() {
     );
   }
 
-  const processingProgress = Math.max(
-    0,
-    Math.min(100, Number.isFinite(progress) ? Math.round(progress) : 0)
-  );
-  const hasFrameCounters = totalFrames > 0;
-  const stageLabel = STAGE_LABELS[jobStage] || jobMessage || "Processing video...";
-  const processingMeta = hasFrameCounters
-    ? `${Math.min(processedFrames, totalFrames)}/${totalFrames} frames`
-    : speedFps > 0
-      ? `${speedFps.toFixed(2)} FPS`
-      : stageLabel;
-
   return (
     <div className="capturePage">
       <canvas ref={canvasRef} style={{ display: "none" }} />
@@ -888,9 +1042,20 @@ export default function App() {
         style={{ display: "none" }}
         onChange={handleGalleryFileChange}
       />
+      <div className="welcomeBrand">
+        <img
+          className="welcomeBrandLogo"
+          src="/src/assets/BCA_white.png"
+          alt="BCA"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = logoBcaFallback;
+          }}
+        />
+      </div>
       <div className="captureHeader">Ambil Foto</div>
       <div className="captureGreeting">
-        <div className="captureGuide">Silakan posisikan wajah dalam bingkai</div>
+        <div className="captureGuide">Silakan posisikan wajah di dalam oval</div>
       </div>
 
       <div className="captureBody">
@@ -903,7 +1068,11 @@ export default function App() {
       </div>
 
       <div className="captureActions">
-        <button className="actionPill" type="button" onClick={() => setPage("costume")}>
+        <button
+          className="actionPill"
+          type="button"
+          onClick={() => setPage("gender")}
+        >
           Kembali
         </button>
         <button
@@ -935,22 +1104,12 @@ export default function App() {
               captureResultStatus === "error" ? "modalCardError" : ""
             }`}
           >
-            <div className="modalTitle">
-              {captureResultTitle ||
-                (captureSource === "gallery"
-                  ? "Foto galeri berhasil diupload"
-                  : "Foto berhasil di-capture")}
-            </div>
-            <div className="modalSub">
-              {captureResultSub ||
-                "Klik Lanjutkan untuk generate video."}
-            </div>
+            <div className="modalTitle">{captureResultTitle}</div>
+            <div className="modalSub">{captureResultSub}</div>
             {captureSource === "gallery" && selectedFileName ? (
               <div className="modalMeta">{selectedFileName}</div>
             ) : null}
-            {captureError ? (
-              <div className="modalError">{captureError}</div>
-            ) : null}
+            {captureError ? <div className="modalError">{captureError}</div> : null}
             {lastShot ? (
               <img className="modalPreview" src={lastShot} alt="preview" />
             ) : null}
@@ -991,7 +1150,7 @@ export default function App() {
         </div>
       ) : null}
 
-      {(isBusy || countdown > 0) && !jobStatus && (
+      {(isBusy || countdown > 0) && (
         <div className="busyOverlay">
           <div className="busyCard">
             <div className="spinner" />
@@ -1002,39 +1161,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {jobStatus === "queued" || jobStatus === "running" ? (
-        <div className="processingOverlay">
-          <div className="processingCard">
-            <video
-              className="processingPreviewVideo"
-              src={processingVideo}
-              autoPlay
-              loop
-              muted
-              playsInline
-            />
-            <div className="processingProgressWrap">
-              <div
-                className="processingProgressTrack"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={processingProgress}
-              >
-                <div
-                  className="processingProgressFill"
-                  style={{ width: `${processingProgress}%` }}
-                />
-              </div>
-              <div className="processingProgressText">{processingProgress}%</div>
-            </div>
-            <div className="processingTitle">{jobMessage || "Processing video..."}</div>
-            <div className="processingSub">{processingMeta}</div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
-
