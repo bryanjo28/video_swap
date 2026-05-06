@@ -14,17 +14,6 @@ const ACTIVE_STATUSES = new Set([
   "encoding",
   "finalizing",
 ]);
-const STAGE_LABELS = {
-  queued: "Queued",
-  running: "Preparing",
-  preparing: "Preparing",
-  extracting: "Extracting frames",
-  processing: "Processing frames",
-  encoding: "Encoding video",
-  finalizing: "Finalizing output",
-  done: "Done",
-  error: "Error",
-};
 const STATUS_PROGRESS_FALLBACK = {
   queued: 0,
   running: 5,
@@ -86,15 +75,32 @@ export default function DisplayPage() {
     totalFrames: 0,
   });
   const [requestError, setRequestError] = useState("");
-  const [isClearing, setIsClearing] = useState(false);
   const lastJobIdRef = useRef("");
   const loadLatestDisplayRef = useRef(null);
+  const previewVideoRef = useRef(null);
+  const consumeTimerRef = useRef(null);
+  const consumedJobIdRef = useRef("");
+  const isActive = ACTIVE_STATUSES.has(displayState.status);
+  const isDone = displayState.status === "done" && displayState.previewUrl;
+  const isError = displayState.status === "error";
+  const stageKey = String(displayState.stage || displayState.status || "idle").toLowerCase();
+  const processingProgress = Math.max(
+    0,
+    Math.min(
+      100,
+      Number.isFinite(displayState.progress) && displayState.progress > 0
+        ? Math.round(displayState.progress)
+        : STATUS_PROGRESS_FALLBACK[stageKey] ?? STATUS_PROGRESS_FALLBACK[displayState.status] ?? 0
+    )
+  );
 
   useEffect(() => {
+    if (window.location.pathname !== "/display") return;
     let isMounted = true;
 
     const loadLatestDisplay = async () => {
       try {
+        console.log("[display] load latest state");
         const displayResponse = await fetch(`${API_BASE_URL}/display/latest`, {
           cache: "no-store",
         });
@@ -124,10 +130,12 @@ export default function DisplayPage() {
         }
 
         if (!isMounted) return;
+        console.log("[display] latest state", nextState);
         setRequestError("");
         setDisplayState(nextState);
       } catch (error) {
         if (!isMounted) return;
+        console.error("[display] failed to load display state", error);
         setRequestError(error?.message || String(error));
       }
     };
@@ -148,6 +156,85 @@ export default function DisplayPage() {
   }, [displayState.jobId, displayState.status]);
 
   useEffect(() => {
+    if (!isDone || !displayState.jobId || !previewVideoRef.current) return undefined;
+
+    const video = previewVideoRef.current;
+    consumedJobIdRef.current = "";
+    console.log("[display] preview armed", {
+      jobId: displayState.jobId,
+      previewUrl: displayState.previewUrl,
+    });
+
+    const clearConsumeTimer = () => {
+      if (consumeTimerRef.current) {
+        window.clearTimeout(consumeTimerRef.current);
+        consumeTimerRef.current = null;
+        console.log("[display] consume timer cleared", { jobId: displayState.jobId });
+      }
+    };
+
+    const consumePreview = async () => {
+      if (consumedJobIdRef.current === displayState.jobId) return;
+      consumedJobIdRef.current = displayState.jobId;
+      clearConsumeTimer();
+      console.log("[display] consuming preview", { jobId: displayState.jobId });
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/display/consume`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: displayState.jobId }),
+        });
+        const payload = await response.json().catch(() => null);
+        console.log("[display] consume response", {
+          ok: response.ok,
+          status: response.status,
+          payload,
+        });
+      } catch (error) {
+        console.error("[display] consume failed", error);
+      } finally {
+        console.log("[display] redirect to /display after consume", {
+          jobId: displayState.jobId,
+        });
+        window.location.href = "/display";
+      }
+    };
+
+    const handlePlay = () => {
+      clearConsumeTimer();
+      console.log("[display] preview play -> start 30s timer", { jobId: displayState.jobId });
+      consumeTimerRef.current = window.setTimeout(consumePreview, 30000);
+    };
+
+    const handlePause = () => {
+      console.log("[display] preview pause -> stop timer", { jobId: displayState.jobId });
+      clearConsumeTimer();
+    };
+
+    const handleEnded = () => {
+      console.log("[display] preview ended -> consume now", { jobId: displayState.jobId });
+      consumePreview();
+    };
+
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("ended", handleEnded);
+
+    if (!video.paused) {
+      handlePlay();
+    }
+
+    return () => {
+      clearConsumeTimer();
+      console.log("[display] preview cleanup", { jobId: displayState.jobId });
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("ended", handleEnded);
+    };
+  }, [displayState.jobId, isDone]);
+
+  useEffect(() => {
     if (!displayState.jobId) return undefined;
     if (displayState.status !== "done" && displayState.status !== "error") {
       return undefined;
@@ -155,64 +242,20 @@ export default function DisplayPage() {
 
     const timer = window.setTimeout(async () => {
       try {
-        setIsClearing(true);
+        console.log("[display] auto clear after timeout", { jobId: displayState.jobId });
         await fetch(`${API_BASE_URL}/display/clear`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         });
       } catch (error) {
-        console.error(error);
+        console.error("[display] auto clear failed", error);
       } finally {
-        setIsClearing(false);
         await loadLatestDisplayRef.current?.();
       }
     }, AUTO_CLEAR_MS);
 
     return () => window.clearTimeout(timer);
   }, [displayState.jobId, displayState.status]);
-
-  const isActive = ACTIVE_STATUSES.has(displayState.status);
-  const isDone = displayState.status === "done" && displayState.previewUrl;
-  const isError = displayState.status === "error";
-  const stageKey = String(displayState.stage || displayState.status || "idle").toLowerCase();
-  const processingProgress = Math.max(
-    0,
-    Math.min(
-      100,
-      Number.isFinite(displayState.progress) && displayState.progress > 0
-        ? Math.round(displayState.progress)
-        : STATUS_PROGRESS_FALLBACK[stageKey] ?? STATUS_PROGRESS_FALLBACK[displayState.status] ?? 0
-    )
-  );
-  const hasFrameCounters = displayState.totalFrames > 0;
-  const stageLabel =
-    STAGE_LABELS[stageKey] ||
-    displayState.message ||
-    STAGE_LABELS[displayState.status] ||
-    "Processing video...";
-  const processingMeta = hasFrameCounters
-    ? `${Math.min(displayState.processedFrames, displayState.totalFrames)}/${displayState.totalFrames} frames`
-    : displayState.speedFps > 0
-      ? `${displayState.speedFps.toFixed(2)} FPS`
-      : stageLabel;
-
-  const handleBack = async () => {
-    if (!isActive && displayState.jobId) {
-      try {
-        setIsClearing(true);
-        await fetch(`${API_BASE_URL}/display/clear`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setIsClearing(false);
-      }
-    }
-
-    window.location.href = "/";
-  };
 
   if (requestError) {
     return (
@@ -234,11 +277,6 @@ export default function DisplayPage() {
           <div className="previewFrame">
             <div className="previewEmpty">Koneksi ke server bermasalah.</div>
           </div>
-        </div>
-        <div className="previewActions">
-          <button className="actionPill" type="button" onClick={handleBack}>
-            Kembali
-          </button>
         </div>
       </div>
     );
@@ -268,6 +306,7 @@ export default function DisplayPage() {
         <div className="previewFrameWrap">
           <div className="previewFrame">
             <video
+              ref={previewVideoRef}
               key={displayState.jobId}
               className="previewVideo"
               src={displayState.previewUrl}
@@ -278,16 +317,6 @@ export default function DisplayPage() {
               controls={false}
             />
           </div>
-        </div>
-        <div className="previewActions">
-          <button
-            className="btn primary"
-            type="button"
-            onClick={handleBack}
-            disabled={isClearing}
-          >
-            {isClearing ? "Loading..." : "Kembali"}
-          </button>
         </div>
       </div>
     );
@@ -318,7 +347,7 @@ export default function DisplayPage() {
           />
           <div className="processingStepLabel">Loading</div>
           <div className="processingTitle">Proses face swap oleh AI</div>
-          <div className="processingSub">{displayState.message || stageLabel}</div>
+          <div className="processingSub">Tunggu sebentar, video sedang diproses.</div>
           <div className="processingProgressWrap">
             <div
               className="processingProgressTrack"
@@ -333,15 +362,6 @@ export default function DisplayPage() {
               />
             </div>
             <div className="processingProgressText">{processingProgress}%</div>
-          </div>
-          <div className="processingMetaRow">
-            <span>Status: {displayState.status}</span>
-            <span>{processingMeta}</span>
-          </div>
-          <div className="previewActions">
-            <button className="actionPill" type="button" onClick={handleBack}>
-              Kembali
-            </button>
           </div>
         </div>
       </div>
@@ -371,16 +391,6 @@ export default function DisplayPage() {
             <div className="previewEmpty">Preview belum tersedia.</div>
           </div>
         </div>
-        <div className="previewActions">
-          <button
-            className="btn primary"
-            type="button"
-            onClick={handleBack}
-            disabled={isClearing}
-          >
-            {isClearing ? "Loading..." : "Kembali"}
-          </button>
-        </div>
       </div>
     );
   }
@@ -404,11 +414,6 @@ export default function DisplayPage() {
         <div className="previewFrame">
           <div className="previewEmpty">Belum ada hasil untuk ditampilkan.</div>
         </div>
-      </div>
-      <div className="previewActions">
-        <button className="actionPill" type="button" onClick={handleBack}>
-          Kembali
-        </button>
       </div>
     </div>
   );

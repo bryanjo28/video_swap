@@ -1,23 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import aiFace from "./assets/ai_face.png";
 import logoBcaFallback from "./assets/BCA_white.png";
-import processingVideo from "./assets/media1.mp4";
 import "./App.css";
-import PreviewPage from "./PreviewPage.jsx";
 
 const API_BASE_URL = "http://localhost:8000";
 const COSTUMES_PER_PAGE = 4;
-const STAGE_LABELS = {
-  queued: "Queued",
-  preparing: "Preparing",
-  extracting: "Extracting frames",
-  processing: "Processing frames",
-  encoding: "Encoding video",
-  finalizing: "Finalizing output",
-  done: "Done",
-  error: "Error",
-};
-
 const toTitleCase = (value) =>
   value
     .replace(/[-_]+/g, " ")
@@ -86,15 +73,15 @@ export default function App() {
   const [lastShot, setLastShot] = useState(null);
   const [captureFilename, setCaptureFilename] = useState("");
 
-  const [jobId, setJobId] = useState("");
-  const [jobStatus, setJobStatus] = useState("");
+  const [, setJobId] = useState("");
+  const [, setJobStatus] = useState("");
   const [progress, setProgress] = useState(0);
-  const [speedFps, setSpeedFps] = useState(0);
-  const [jobMessage, setJobMessage] = useState("");
-  const [jobStage, setJobStage] = useState("queued");
-  const [processedFrames, setProcessedFrames] = useState(0);
-  const [totalFrames, setTotalFrames] = useState(0);
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [, setSpeedFps] = useState(0);
+  const [, setJobMessage] = useState("");
+  const [, setJobStage] = useState("queued");
+  const [, setProcessedFrames] = useState(0);
+  const [, setTotalFrames] = useState(0);
+  const [, setPreviewUrl] = useState("");
 
   const busyText = useMemo(() => {
     if (countdown > 0) return `Get ready... ${countdown}`;
@@ -346,30 +333,6 @@ export default function App() {
     return canvas.toDataURL("image/jpeg", 0.95);
   };
 
-  const pollJob = async (id) => {
-    while (true) {
-      const response = await fetch(`${API_BASE_URL}/status/${id}`);
-      const json = await response.json();
-
-      if (!response.ok || json.ok === false) {
-        throw new Error(json.detail || json.message || "Failed to read job status");
-      }
-
-      setJobStatus(json.status || "");
-      setProgress(Number(json.progress || 0));
-      setSpeedFps(Number(json.speed_fps || 0));
-      setJobMessage(json.message || "");
-      setJobStage(String(json.stage || ""));
-      setProcessedFrames(Number(json.processed_frames || 0));
-      setTotalFrames(Number(json.total_frames || 0));
-
-      if (json.status === "done") return json;
-      if (json.status === "error") throw new Error(json.message || "Processing error");
-
-      await sleep(600);
-    }
-  };
-
   const startSwapJob = async (filename, costumeId) => {
     resetJobState();
     setJobStatus("queued");
@@ -393,9 +356,7 @@ export default function App() {
 
     const id = json.job_id;
     setJobId(id);
-    const donePayload = await pollJob(id);
-    setStatus("Done");
-    return donePayload;
+    return id;
   };
 
   const captureOnly = async () => {
@@ -616,8 +577,8 @@ export default function App() {
       const filename = captureFilename;
       const costumeId = selectedCostumeId;
       setError("");
-      resetFlow();
       await startSwapJob(filename, costumeId);
+      resetFlow();
     } catch (e) {
       console.error(e);
       const message = e?.message || String(e);
@@ -626,8 +587,6 @@ export default function App() {
       setPage("costume");
     }
   };
-
-  const downloadUrl = jobId ? `${API_BASE_URL}/download/${jobId}` : "";
 
   const handleConcernContinue = () => {
     setFormTouched(true);
@@ -640,22 +599,6 @@ export default function App() {
     if (!formData.gender) return;
     setPage("capture");
   };
-
-  const handleBackFromPreview = () => {
-    resetFlow();
-  };
-
-  const processingProgress = Math.max(
-    0,
-    Math.min(100, Number.isFinite(progress) ? Math.round(progress) : 0)
-  );
-  const hasFrameCounters = totalFrames > 0;
-  const stageLabel = STAGE_LABELS[jobStage] || jobMessage || "Processing video...";
-  const processingMeta = hasFrameCounters
-    ? `${Math.min(processedFrames, totalFrames)}/${totalFrames} frames`
-    : speedFps > 0
-      ? `${speedFps.toFixed(2)} FPS`
-      : stageLabel;
 
   if (page === "welcome") {
     return (
@@ -682,7 +625,7 @@ export default function App() {
           </div>
           <h1 className="welcomeTitle">
             Welcome to
-            <span>BCA Gallery</span>
+            <span>BCA Galeri Sentul</span>
             <span>AI Video Generator</span>
           </h1>
           <button
@@ -750,13 +693,13 @@ export default function App() {
               Lanjut
             </button>
           </div>
-          <button
+          {/* <button
             type="button"
             className="concernBackLink"
             onClick={() => setPage("welcome")}
           >
             Kembali ke halaman awal
-          </button>
+          </button> */}
         </div>
       </div>
     );
@@ -968,67 +911,6 @@ export default function App() {
           </div>
         </div>
       </div>
-    );
-  }
-
-  if (page === "processing") {
-    return (
-      <div className="processingPage">
-        <div className="welcomeBrand">
-          <img
-            className="welcomeBrandLogo"
-            src="/src/assets/BCA_white.png"
-            alt="BCA"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = logoBcaFallback;
-            }}
-          />
-        </div>
-        <div className="processingCard">
-          <video
-            className="processingPreviewVideo"
-            src={processingVideo}
-            autoPlay
-            loop
-            muted
-            playsInline
-          />
-          <div className="processingStepLabel">Loading</div>
-          <div className="processingTitle">Proses face swap oleh AI</div>
-          <div className="processingSub">{jobMessage || stageLabel}</div>
-          <div className="processingProgressWrap">
-            <div
-              className="processingProgressTrack"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={processingProgress}
-            >
-              <div
-                className="processingProgressFill"
-                style={{ width: `${processingProgress}%` }}
-              />
-            </div>
-            <div className="processingProgressText">{processingProgress}%</div>
-          </div>
-          <div className="processingMetaRow">
-            {jobStatus ? <span>Status: {jobStatus}</span> : null}
-            <span>{processingMeta}</span>
-            {selectedCostumeId ? <span>Costume selected</span> : null}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (page === "preview") {
-    return (
-      <PreviewPage
-        previewUrl={previewUrl}
-        downloadUrl={downloadUrl}
-        onBack={handleBackFromPreview}
-      />
     );
   }
 
