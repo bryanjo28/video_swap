@@ -260,7 +260,7 @@ export default function DisplayPage() {
   if (requestError) {
     return (
       <div className="previewPage">
-        <div className="welcomeBrand">
+        {/* <div className="welcomeBrandDisplay">
           <img
             className="welcomeBrandLogo"
             src="/src/assets/BCA_white.png"
@@ -270,7 +270,7 @@ export default function DisplayPage() {
               e.currentTarget.src = logoBcaFallback;
             }}
           />
-        </div>
+        </div> */}
         <div className="previewHeader">Display</div>
         <div className="previewSub">{requestError}</div>
         <div className="previewFrameWrap">
@@ -285,7 +285,7 @@ export default function DisplayPage() {
   if (isDone) {
     return (
       <div className="previewPage">
-        <div className="welcomeBrand">
+        {/* <div className="welcomeBrandDisplay">
           <img
             className="welcomeBrandLogo"
             src="/src/assets/BCA_white.png"
@@ -295,7 +295,7 @@ export default function DisplayPage() {
               e.currentTarget.src = logoBcaFallback;
             }}
           />
-        </div>
+        </div> */}
         <div className="previewHeader">Preview</div>
         <div className="previewSub">
           {displayState.createdAt
@@ -325,7 +325,7 @@ export default function DisplayPage() {
   if (isActive) {
     return (
       <div className="processingPage">
-        <div className="welcomeBrand">
+        {/* <div className="welcomeBrand">
           <img
             className="welcomeBrandLogo"
             src="/src/assets/BCA_white.png"
@@ -335,7 +335,7 @@ export default function DisplayPage() {
               e.currentTarget.src = logoBcaFallback;
             }}
           />
-        </div>
+        </div> */}
         <div className="processingCard">
           <video
             className="processingPreviewVideo"
@@ -371,7 +371,7 @@ export default function DisplayPage() {
   if (isError) {
     return (
       <div className="previewPage">
-        <div className="welcomeBrand">
+        {/* <div className="welcomeBrand">
           <img
             className="welcomeBrandLogo"
             src="/src/assets/BCA_white.png"
@@ -381,7 +381,7 @@ export default function DisplayPage() {
               e.currentTarget.src = logoBcaFallback;
             }}
           />
-        </div>
+        </div> */}
         <div className="previewHeader">Preview</div>
         <div className="previewSub">
           {displayState.message || "Proses gagal. Silakan ulangi dari layar utama."}
@@ -397,7 +397,7 @@ export default function DisplayPage() {
 
   return (
     <div className="previewPage">
-      <div className="welcomeBrand">
+      {/* <div className="welcomeBrandDisplay">
         <img
           className="welcomeBrandLogo"
           src="/src/assets/BCA_white.png"
@@ -407,12 +407,12 @@ export default function DisplayPage() {
             e.currentTarget.src = logoBcaFallback;
           }}
         />
-      </div>
+      </div> */}
       <div className="previewHeader">Preview</div>
-      <div className="previewSub">Menunggu hasil terbaru.</div>
+      {/* <div className="previewSub">Menunggu hasil terbaru.</div> */}
       <div className="previewFrameWrap">
         <div className="previewFrame">
-          <div className="previewEmpty">Belum ada hasil untuk ditampilkan.</div>
+          {/* <div className="previewEmpty">Belum ada hasil untuk ditampilkan.</div> */}
         </div>
       </div>
     </div>

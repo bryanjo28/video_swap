@@ -107,10 +107,13 @@
 .welcomeBrand {
   position: fixed;
   top: max(16px, env(safe-area-inset-top));
-  left: max(18px, env(safe-area-inset-left));
   z-index: 4;
   pointer-events: none;
 }
+
+.welcomeBrandDisplay{
+    top: max(50px, env(safe-area-inset-top));
+  }
 
 .welcomeBrandLogo {
   height: 38px;
@@ -343,7 +346,7 @@
 }
 
 .consentCopy {
-  font-size: 13px;
+  font-size: 10px;
   line-height: 1.5;
   color: var(--intro-ink);
   font-weight: 600;
@@ -464,6 +467,14 @@
   font-weight: 800;
   color: #fff;
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3);
+}
+
+.genderBadgeIcon {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  display: block;
+  filter: brightness(0) invert(1);
 }
 
 .maleBadge {
@@ -915,6 +926,31 @@
   z-index: 1;
 }
 
+.captureBackArrow {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(198, 237, 255, 0.58);
+  border-radius: 999px;
+  background: rgba(5, 67, 128, 0.22);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    0 10px 24px rgba(0, 30, 72, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.captureBackArrow:active {
+  transform: scale(0.97);
+}
+
 .captureHeader {
   font-family: var(--font-sans);
   font-size: clamp(34px, 7.8vw, 48px);
@@ -1063,12 +1099,10 @@
 }
 
 .captureActions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-top: 6px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .actionPill {
@@ -1363,6 +1397,7 @@
   font-weight: 800;
   color: #ffffff;
   text-shadow: 0 8px 22px rgba(2, 18, 52, 0.45);
+  top:70px
 }
 
 .previewSub {
@@ -1885,10 +1920,12 @@
   }
 
   .welcomeBrand {
-    top: max(10px, env(safe-area-inset-top));
-    left: max(12px, env(safe-area-inset-left));
+    top: max(150px, env(safe-area-inset-top));
   }
 
+  .welcomeBrandDisplay{
+    top: max(50px, env(safe-area-inset-top));
+  }
   .welcomeTitle {
     font-size: clamp(28px, 8vw, 40px);
   }
@@ -1983,6 +2020,7 @@
   }
 
   .previewHeader {
+    top: 70px;
     font-size: 22px;
   }
 

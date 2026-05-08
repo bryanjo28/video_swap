@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import aiFace from "./assets/ai_face.png";
 import logoBcaFallback from "./assets/BCA_white.png";
+import manIcon from "./assets/man_icon.png";
+import womanIcon from "./assets/woman_icon.png";
 import "./App.css";
 
 const API_BASE_URL = "http://localhost:8000";
@@ -409,11 +411,6 @@ export default function App() {
     setLastShot(null);
   };
 
-  const handleGalleryClick = () => {
-    if (isBusy || countdown > 0 || captureSubmitting) return;
-    galleryInputRef.current?.click();
-  };
-
   const handleCostumeSelect = (costumeId) => {
     setSelectedCostumeId(costumeId);
   };
@@ -646,7 +643,7 @@ export default function App() {
       <div className="stagePage">
         <div className="stageGlow stageGlowA" />
         <div className="stageGlow stageGlowB" />
-        <div className="welcomeBrand">
+        {/* <div className="welcomeBrand">
           <img
             className="welcomeBrandLogo"
             src="/src/assets/BCA_white.png"
@@ -656,14 +653,14 @@ export default function App() {
               e.currentTarget.src = logoBcaFallback;
             }}
           />
-        </div>
+        </div> */}
         <div className="stageCard concernCard">
           <div className="concernAvatar">
             <div className="concernAvatarRing">
               <img className="concernAvatarImage" src={aiFace} alt="AI assistant" />
             </div>
           </div>
-          <div className="stageStep">Concern</div>
+          <div className="stageStep">Consent</div>
           <div className="stageTitle">Data Pengguna</div>
           <div className="stageSub">
             Mohon persetujuan penggunaan foto untuk proses AI face swap.
@@ -677,8 +674,7 @@ export default function App() {
               }
             />
             <span className="consentCopy">
-              Saya setuju foto saya digunakan untuk proses face swap pada aplikasi
-              ini.
+              Saya dengan ini memberikan persetujuan kepada PT Bank Central Asia tbk. ("BCA") untuk memproses data pribadi saya berupa foto diri untuk tujuan penampilan seragam BCA menggunakan artificial intelligence (AI). Data pribadi saya hanya akan diproses sesuai tujuan tersebut, tidak akan diberikan ke pihak ketiga, dan tidak akan disimpan oleh BCA. Seluruh pemrosesan data pribadi dilakukan sesuai dengan Kebijakan Pelindungan Data Pribadi BCA dan peraturan perundang-undangan yang berlaku.
             </span>
           </label>
           {showConsentError ? (
@@ -710,7 +706,7 @@ export default function App() {
       <div className="stagePage">
         <div className="stageGlow stageGlowA" />
         <div className="stageGlow stageGlowB" />
-        <div className="welcomeBrand">
+        {/* <div className="welcomeBrand">
           <img
             className="welcomeBrandLogo"
             src="/src/assets/BCA_white.png"
@@ -720,7 +716,7 @@ export default function App() {
               e.currentTarget.src = logoBcaFallback;
             }}
           />
-        </div>
+        </div> */}
         <div className="stageCard">
           <div className="stageStep">Pilih Gender</div>
           <div className="stageTitle">Choose Gender</div>
@@ -737,7 +733,9 @@ export default function App() {
               onClick={() => handleGenderSelect("male")}
               disabled={costumesLoading || !genderAvailability.male}
             >
-              <span className="genderBadge maleBadge">M</span>
+              <span className="genderBadge maleBadge">
+                <img className="genderBadgeIcon" src={manIcon} alt="Male" />
+              </span>
               <span className="genderChoiceLabel">Male</span>
               {!costumesLoading && !genderAvailability.male ? (
                 <span className="genderChoiceHint">Costume belum tersedia</span>
@@ -751,7 +749,9 @@ export default function App() {
               onClick={() => handleGenderSelect("female")}
               disabled={costumesLoading || !genderAvailability.female}
             >
-              <span className="genderBadge femaleBadge">F</span>
+              <span className="genderBadge femaleBadge">
+                <img className="genderBadgeIcon" src={womanIcon} alt="Female" />
+              </span>
               <span className="genderChoiceLabel">Female</span>
               {!costumesLoading && !genderAvailability.female ? (
                 <span className="genderChoiceHint">Costume belum tersedia</span>
@@ -924,6 +924,14 @@ export default function App() {
         style={{ display: "none" }}
         onChange={handleGalleryFileChange}
       />
+      <button
+        className="captureBackArrow"
+        type="button"
+        aria-label="Kembali"
+        onClick={() => setPage("gender")}
+      >
+        &#8592;
+      </button>
       <div className="welcomeBrand">
         <img
           className="welcomeBrandLogo"
@@ -951,22 +959,12 @@ export default function App() {
 
       <div className="captureActions">
         <button
-          className="actionPill"
-          type="button"
-          onClick={() => setPage("gender")}
-        >
-          Kembali
-        </button>
-        <button
           className="actionMain"
           type="button"
           onClick={captureOnly}
           disabled={isBusy || countdown > 0}
         >
           {isBusy || countdown > 0 ? "Tunggu..." : "Ambil Foto"}
-        </button>
-        <button className="actionPill" type="button" onClick={handleGalleryClick}>
-          Galeri
         </button>
       </div>
 
