@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./AdminPage.css";
 import { FaTrash, FaPen } from "react-icons/fa";
-import { CiTextAlignRight } from "react-icons/ci";
 
 const API_BASE_URL = "http://localhost:8000";
 const ITEMS_PER_PAGE = 5;
+const PREVIEW_ALERT_TIMEOUT_MS = 4000;
 
-const navItems = [{ id: "dashboard", label: "Dashboard", active: true }];
+const navItems = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "upload-preview", label: "Upload Preview" },
+];
 
 const safeText = (value) => {
   if (value === null || value === undefined || value === "") return "-";
@@ -20,8 +23,45 @@ const toSlug = (value) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const normalizePreviewLoadingStatus = (payload, gender) => {
+  const fileName =
+    String(
+      payload?.file_name ||
+        payload?.filename ||
+        payload?.name ||
+        payload?.video_name ||
+        ""
+    ).trim();
+  const filePath =
+    String(
+      payload?.file_path ||
+        payload?.path ||
+        payload?.video_path ||
+        payload?.url ||
+        payload?.video_url ||
+        ""
+    ).trim();
+  const updatedAt = String(payload?.updated_at || payload?.modified_at || "").trim();
+  const available =
+    payload?.available === true ||
+    payload?.exists === true ||
+    payload?.file_exists === true ||
+    payload?.has_file === true ||
+    Boolean(fileName || filePath);
+
+  return {
+    gender,
+    available,
+    fileName,
+    filePath,
+    updatedAt,
+    message: available ? "File video available" : "No video file uploaded yet",
+  };
+};
+
 
 export default function AdminPage() {
+  const [activeSection, setActiveSection] = useState("dashboard");
   const [costumes, setCostumes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -57,6 +97,23 @@ export default function AdminPage() {
     video: null,
     thumbnail: null,
   });
+  const [previewForm, setPreviewForm] = useState({
+    gender: "male",
+    file: null,
+  });
+  const [previewStatus, setPreviewStatus] = useState({
+    isLoading: false,
+    error: "",
+    gender: "male",
+    available: false,
+    fileName: "",
+    filePath: "",
+    updatedAt: "",
+    message: "Choose gender to check file status.",
+  });
+  const [previewSubmitting, setPreviewSubmitting] = useState(false);
+  const [previewSubmitMessage, setPreviewSubmitMessage] = useState("");
+  const [previewInputVersion, setPreviewInputVersion] = useState(0);
 
   const loadCostumes = useCallback(async () => {
     try {
@@ -82,6 +139,60 @@ export default function AdminPage() {
   useEffect(() => {
     loadCostumes();
   }, [loadCostumes]);
+
+  const loadPreviewStatus = useCallback(async (gender) => {
+    const normalizedGender = gender === "female" ? "female" : "male";
+    try {
+      setPreviewStatus((prev) => ({
+        ...prev,
+        isLoading: true,
+        error: "",
+        gender: normalizedGender,
+      }));
+
+      const response = await fetch(
+        `${API_BASE_URL}/preview-loading/${normalizedGender}`,
+        {
+          cache: "no-store",
+        }
+      );
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.ok === false) {
+        throw new Error(
+          json?.detail || json?.message || "Failed to load preview video status"
+        );
+      }
+
+      setPreviewStatus({
+        isLoading: false,
+        error: "",
+        ...normalizePreviewLoadingStatus(json, normalizedGender),
+      });
+    } catch (err) {
+      setPreviewStatus((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: err?.message || String(err),
+        gender: normalizedGender,
+        available: false,
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeSection !== "upload-preview") return;
+    loadPreviewStatus(previewForm.gender);
+  }, [activeSection, previewForm.gender, loadPreviewStatus]);
+
+  useEffect(() => {
+    if (!previewSubmitMessage) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setPreviewSubmitMessage("");
+    }, PREVIEW_ALERT_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [previewSubmitMessage]);
 
   // opsional: tutup modal pakai ESC
   useEffect(() => {
@@ -333,6 +444,50 @@ export default function AdminPage() {
     }
   };
 
+  const handlePreviewSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      setPreviewSubmitMessage("");
+      if (!previewForm.file) {
+        throw new Error("Video preview is required.");
+      }
+
+      setPreviewSubmitting(true);
+      const formData = new FormData();
+      formData.append("video", previewForm.file);
+      formData.append("file", previewForm.file);
+
+      const response = await fetch(
+        `${API_BASE_URL}/preview-loading/${previewForm.gender}`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.ok === false) {
+        throw new Error(
+          json?.detail || json?.message || "Failed to upload preview video"
+        );
+      }
+
+      setPreviewSubmitMessage("Preview video uploaded successfully.");
+      setPreviewForm((prev) => ({ ...prev, file: null }));
+      setPreviewInputVersion((current) => current + 1);
+      await loadPreviewStatus(previewForm.gender);
+    } catch (err) {
+      setPreviewSubmitMessage(err?.message || String(err));
+    } finally {
+      setPreviewSubmitting(false);
+    }
+  };
+
+  const pageTitle =
+    activeSection === "upload-preview" ? "Upload Preview" : "Dashboard";
+  const pageBreadcrumb =
+    activeSection === "upload-preview" ? "Dashboard / Upload Preview" : "Dashboard";
+
   return (
     <div className="adminRoot">
       <div className="adminBackdrop adminBackdropA" />
@@ -360,7 +515,8 @@ export default function AdminPage() {
             <button
               key={item.id}
               type="button"
-              className={`adminNavItem ${item.active ? "isActive" : ""}`}
+              className={`adminNavItem ${activeSection === item.id ? "isActive" : ""}`}
+              onClick={() => setActiveSection(item.id)}
             >
               <span>{item.label}</span>
             </button>
@@ -371,188 +527,301 @@ export default function AdminPage() {
       <main className="adminMain">
         <header className="adminHeader">
           <div>
-            <h1 className="adminTitle">Dashboard</h1>
-            <p className="adminBreadcrumb">Dashboard</p>
+            <h1 className="adminTitle">{pageTitle}</h1>
+            <p className="adminBreadcrumb">{pageBreadcrumb}</p>
           </div>
         </header>
 
-        <section className="adminCard adminCardEnter">
-          <div className="adminSectionHead">
-            <h2>Costume Data</h2>
-            <button type="button" className="adminSeeAll" onClick={handleOpenAddModal}>
-              + Add New
-            </button>
-          </div>
+        {activeSection === "dashboard" ? (
+          <section className="adminCard adminCardEnter">
+            <div className="adminSectionHead">
+              <h2>Costume Data</h2>
+              <button type="button" className="adminSeeAll" onClick={handleOpenAddModal}>
+                + Add New
+              </button>
+            </div>
 
-          <div className="adminTableTools">
-            <input
-              type="text"
-              className="adminSearchInput"
-              placeholder="Search name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <div className="adminFilterTools">
-            <select
-              className="adminGenderSelect"
-              value={genderFilter}
-              onChange={(e) => setGenderFilter(e.target.value)}
-            >
-              {genderOptions.map((gender) => (
-                <option key={gender} value={gender}>
-                  {gender === "all"
-                    ? "All Gender"
-                    : gender.charAt(0).toUpperCase() + gender.slice(1)}
-                </option>
-              ))}
-            </select>
-            <select
-              className="adminGenderSelect"
-              value={activeFilter}
-              onChange={(e) => setActiveFilter(e.target.value)}
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
+            <div className="adminTableTools">
+              <input
+                type="text"
+                className="adminSearchInput"
+                placeholder="Search name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="adminFilterTools">
+              <select
+                className="adminGenderSelect"
+                value={genderFilter}
+                onChange={(e) => setGenderFilter(e.target.value)}
+              >
+                {genderOptions.map((gender) => (
+                  <option key={gender} value={gender}>
+                    {gender === "all"
+                      ? "All Gender"
+                      : gender.charAt(0).toUpperCase() + gender.slice(1)}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="adminGenderSelect"
+                value={activeFilter}
+                onChange={(e) => setActiveFilter(e.target.value)}
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
 
-          <div className="adminTableWrap">
-            <table className="adminTable">
-              <thead>
-                <tr>
-                  <th>No</th>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Gender</th>
-                  <th>Active</th>
-                  <th>Foto Kostum</th>
-                  <th style={{textAlign:"right"}}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
+            <div className="adminTableWrap">
+              <table className="adminTable">
+                <thead>
                   <tr>
-                    <td colSpan={7}>Loading costumes...</td>
+                    <th>No</th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Gender</th>
+                    <th>Active</th>
+                    <th>Foto Kostum</th>
+                    <th style={{ textAlign: "right" }}>Action</th>
                   </tr>
-                ) : error ? (
-                  <tr>
-                    <td colSpan={7}>Failed to load costumes: {error}</td>
-                  </tr>
-                ) : filteredCostumes.length === 0 ? (
-                  <tr>
-                    <td colSpan={7}>No data matches current filter/search.</td>
-                  </tr>
-                ) : (
-                  pagedCostumes.map((item, index) => (
-                    <tr key={`${safeText(item?.id)}-${index}`}>
-                      <td>{(currentPageSafe - 1) * ITEMS_PER_PAGE + index + 1}</td>
-                      <td>{safeText(item?.id)}</td>
-                      <td>{safeText(item?.name)}</td>
-                      <td>{safeText(item?.gender)}</td>
-                      <td >
-                        <span
-                          style={{
-                            padding: "4px 6px",
-                            borderRadius: "20px",
-                            fontSize: "12px",
-                            fontWeight: "500",
-                            color: "white",
-                            backgroundColor: item?.isActive ? "#22c55e" : "#ef4444",
-                          }}
-                        >
-                          {item?.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td>
-                        {item?.thumbBase64 || item?.thumbPath ? (
-                          <img
-                            className="adminThumbPreview"
-                            src={item.thumbBase64 || item.thumbPath}
-                            alt={safeText(item?.name)}
-                          />
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td>
-                        <div style={{ display: "flex", gap: "8px", justifyContent: "right" }}>
-
-                          {/* EDIT */}
-                          <button
-                            style={{
-                              backgroundColor: "#facc15",
-                              border: "none",
-                              padding: "8px",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                            }}
-                            onClick={() => handleOpenEditModal(item)}
-                          >
-                            <FaPen color="black" />
-                          </button>
-
-                          {/* DELETE */}
-                          <button
-                            style={{
-                              backgroundColor: "#ef4444",
-                              border: "none",
-                              padding: "8px",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                            }}
-                            onClick={() => handleOpenDeleteModal(item)}
-                          >
-                            <FaTrash color="white" />
-                          </button>
-
-                        </div>
-                      </td>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7}>Loading costumes...</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={7}>Failed to load costumes: {error}</td>
+                    </tr>
+                  ) : filteredCostumes.length === 0 ? (
+                    <tr>
+                      <td colSpan={7}>No data matches current filter/search.</td>
+                    </tr>
+                  ) : (
+                    pagedCostumes.map((item, index) => (
+                      <tr key={`${safeText(item?.id)}-${index}`}>
+                        <td>{(currentPageSafe - 1) * ITEMS_PER_PAGE + index + 1}</td>
+                        <td>{safeText(item?.id)}</td>
+                        <td>{safeText(item?.name)}</td>
+                        <td>{safeText(item?.gender)}</td>
+                        <td>
+                          <span
+                            style={{
+                              padding: "4px 6px",
+                              borderRadius: "20px",
+                              fontSize: "12px",
+                              fontWeight: "500",
+                              color: "white",
+                              backgroundColor: item?.isActive ? "#22c55e" : "#ef4444",
+                            }}
+                          >
+                            {item?.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td>
+                          {item?.thumbBase64 || item?.thumbPath ? (
+                            <img
+                              className="adminThumbPreview"
+                              src={item.thumbBase64 || item.thumbPath}
+                              alt={safeText(item?.name)}
+                            />
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td>
+                          <div
+                            style={{ display: "flex", gap: "8px", justifyContent: "right" }}
+                          >
+                            <button
+                              style={{
+                                backgroundColor: "#facc15",
+                                border: "none",
+                                padding: "8px",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => handleOpenEditModal(item)}
+                            >
+                              <FaPen color="black" />
+                            </button>
 
-          {!isLoading && !error && filteredCostumes.length > 0 ? (
-            <div className="adminPagination">
-              <div className="adminPaginationInfo">
-                Page {currentPageSafe} of {totalPages}
+                            <button
+                              style={{
+                                backgroundColor: "#ef4444",
+                                border: "none",
+                                padding: "8px",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => handleOpenDeleteModal(item)}
+                            >
+                              <FaTrash color="white" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {!isLoading && !error && filteredCostumes.length > 0 ? (
+              <div className="adminPagination">
+                <div className="adminPaginationInfo">
+                  Page {currentPageSafe} of {totalPages}
+                </div>
+                <div className="adminPaginationActions">
+                  <button
+                    type="button"
+                    className="adminPageBtn"
+                    onClick={() =>
+                      setCurrentPage((page) => Math.max(1, page - 1))
+                    }
+                    disabled={currentPageSafe <= 1}
+                  >
+                    Prev
+                  </button>
+                  <button type="button" className="adminPageBtn isCurrent">
+                    {currentPageSafe}
+                  </button>
+                  <button
+                    type="button"
+                    className="adminPageBtn"
+                    onClick={() =>
+                      setCurrentPage((page) => Math.min(totalPages, page + 1))
+                    }
+                    disabled={currentPageSafe >= totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
-              <div className="adminPaginationActions">
-                <button
-                  type="button"
-                  className="adminPageBtn"
-                  onClick={() =>
-                    setCurrentPage((page) => Math.max(1, page - 1))
-                  }
-                  disabled={currentPageSafe <= 1}
-                >
-                  Prev
-                </button>
-                <button type="button" className="adminPageBtn isCurrent">
-                  {currentPageSafe}
-                </button>
-                <button
-                  type="button"
-                  className="adminPageBtn"
-                  onClick={() =>
-                    setCurrentPage((page) => Math.min(totalPages, page + 1))
-                  }
-                  disabled={currentPageSafe >= totalPages}
-                >
-                  Next
-                </button>
+            ) : null}
+          </section>
+        ) : (
+          <section className="adminCard adminCardEnter adminCardCompact">
+            <div className="adminSectionHead">
+              <div>
+                <h2>Upload Preview</h2>
+                <p className="adminSectionSub">
+                  Choose a gender, check active loading preview status, then upload or
+                  replace the video file.
+                </p>
               </div>
             </div>
-          ) : null}
-        </section>
+
+            <form className="adminPreviewForm" onSubmit={handlePreviewSubmit}>
+              <div className="adminPreviewGrid">
+                <div className="adminPreviewField">
+                  <label className="adminLabel" htmlFor="preview-gender">
+                    Gender
+                  </label>
+                  <select
+                    id="preview-gender"
+                    className="adminGenderSelect adminPreviewSelect"
+                    value={previewForm.gender}
+                    onChange={(e) => {
+                      setPreviewSubmitMessage("");
+                      setPreviewForm((prev) => ({
+                        ...prev,
+                        gender: e.target.value === "female" ? "female" : "male",
+                      }));
+                    }}
+                    disabled={previewSubmitting}
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+
+                <div className="adminPreviewField">
+                  <label className="adminLabel" htmlFor="preview-video">
+                    Preview Video
+                  </label>
+                  <input
+                    key={previewInputVersion}
+                    id="preview-video"
+                    type="file"
+                    accept="video/*"
+                    className="modalFile"
+                    onChange={(e) => {
+                      setPreviewSubmitMessage("");
+                      setPreviewForm((prev) => ({
+                        ...prev,
+                        file: e.target.files?.[0] || null,
+                      }));
+                    }}
+                    disabled={previewSubmitting}
+                  />
+                </div>
+              </div>
+
+              <div className="adminPreviewStatusCard">
+                <div className="adminPreviewStatusHead">
+                  <div className="adminPreviewStatusTitle">
+                    Status for {previewForm.gender === "female" ? "Female" : "Male"}
+                  </div>
+                  <button
+                    type="button"
+                    className="adminBtnGhost"
+                    onClick={() => loadPreviewStatus(previewForm.gender)}
+                    disabled={previewSubmitting || previewStatus.isLoading}
+                  >
+                    {previewStatus.isLoading ? "Checking..." : "Refresh Status"}
+                  </button>
+                </div>
+
+                {previewStatus.error ? (
+                  <div className="adminPreviewStatusError">
+                    Failed to check file status: {previewStatus.error}
+                  </div>
+                ) : (
+                  <div className="adminPreviewStatusBody">
+                    <div
+                      className={`adminPreviewStatusBadge ${
+                        previewStatus.available ? "isAvailable" : "isMissing"
+                      }`}
+                    >
+                      {previewStatus.message}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {previewSubmitMessage ? (
+                <div
+                  className={
+                    previewSubmitMessage === "Preview video uploaded successfully."
+                      ? "adminPreviewStatusSuccess"
+                      : "adminPreviewStatusError"
+                  }
+                >
+                  {previewSubmitMessage}
+                </div>
+              ) : null}
+
+              <div className="adminCardActions">
+                <button
+                  type="submit"
+                  className="adminBtnPrimary"
+                  disabled={previewSubmitting}
+                >
+                  {previewSubmitting ? "Uploading..." : "Upload Preview"}
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
       </main>
 
       {isAddModalOpen && (
-        <div className="modalOverlay" onClick={handleCloseAddModal}>
+        <div className="modalOverlay">
           <div className="modalContent" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <h3 className="modalTitle">Add New Costume</h3>
@@ -683,7 +952,7 @@ export default function AdminPage() {
       )}
 
       {isEditModalOpen && (
-        <div className="modalOverlay" onClick={handleCloseEditModal}>
+        <div className="modalOverlay">
           <div className="modalContent" onClick={(e) => e.stopPropagation()}>
             <div className="modalHeader">
               <h3 className="modalTitle">Edit Costume</h3>

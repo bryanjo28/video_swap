@@ -7,6 +7,9 @@ import "./App.css";
 
 const API_BASE_URL = "http://localhost:8000";
 const COSTUMES_PER_PAGE = 4;
+const COSTUME_REFRESH_INTERVAL_MS = 5000;
+const JOB_LOCK_REFRESH_INTERVAL_MS = 2000;
+const ACTIVE_JOB_STATUSES = new Set(["queued", "running", "done"]);
 const toTitleCase = (value) =>
   value
     .replace(/[-_]+/g, " ")
@@ -42,6 +45,8 @@ export default function App() {
   const galleryInputRef = useRef(null);
   const frameShellRef = useRef(null);
   const faceOvalRef = useRef(null);
+  const loadCostumesRef = useRef(null);
+  const loadJobLockStateRef = useRef(null);
 
   const [page, setPage] = useState("welcome");
   const [formData, setFormData] = useState({
@@ -74,6 +79,11 @@ export default function App() {
 
   const [lastShot, setLastShot] = useState(null);
   const [captureFilename, setCaptureFilename] = useState("");
+  const [activeJobState, setActiveJobState] = useState({
+    jobId: "",
+    status: "idle",
+    message: "",
+  });
 
   const [, setJobId] = useState("");
   const [, setJobStatus] = useState("");
@@ -124,6 +134,13 @@ export default function App() {
   const canContinue = formData.consent;
   const showConsentError = formTouched && !formData.consent;
   const showGenderError = genderTouched && !formData.gender;
+  const isJobLocked = ACTIVE_JOB_STATUSES.has(activeJobState.status);
+  const jobLockMessage =
+    activeJobState.status === "done"
+      ? "Hasil sebelumnya masih tampil di display. Tunggu sampai preview selesai."
+      : activeJobState.status === "queued" || activeJobState.status === "running"
+        ? "Proses AI masih berjalan. Tunggu sampai proses sebelumnya selesai."
+        : "";
 
   useEffect(() => {
     if (!costumeOptions.length) {
@@ -202,11 +219,58 @@ export default function App() {
     }
   };
 
+  loadCostumesRef.current = loadCostumes;
+
+  const loadJobLockState = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/display/latest`, {
+        cache: "no-store",
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.ok === false) {
+        throw new Error(json?.detail || json?.message || "Failed to load display state");
+      }
+
+      const nextStatus = String(json?.status || "idle").toLowerCase();
+      setActiveJobState({
+        jobId: String(json?.job_id || ""),
+        status: nextStatus,
+        message: String(json?.message || ""),
+      });
+    } catch (err) {
+      console.error("[job-lock] failed to load display state", err);
+    }
+  };
+
+  loadJobLockStateRef.current = loadJobLockState;
+
   useEffect(() => {
     if (page !== "gender" && page !== "costume") return;
-    if (allCostumes.length || costumesLoading) return;
-    loadCostumes();
-  }, [page, allCostumes.length, costumesLoading]);
+
+    loadCostumesRef.current?.();
+
+    const intervalId = window.setInterval(() => {
+      loadCostumesRef.current?.();
+    }, COSTUME_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [page]);
+
+  useEffect(() => {
+    if (page !== "costume") return undefined;
+
+    loadJobLockStateRef.current?.();
+
+    const intervalId = window.setInterval(() => {
+      loadJobLockStateRef.current?.();
+    }, JOB_LOCK_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [page]);
 
   useEffect(() => {
     if (page !== "capture") return;
@@ -214,7 +278,6 @@ export default function App() {
     const startCamera = async () => {
       try {
         setError("");
-        setStatus("Requesting camera permission...");
 
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -236,7 +299,7 @@ export default function App() {
       } catch (e) {
         console.error(e);
         setError(e?.message || String(e));
-        setStatus("Camera error");
+        setStatus("Error");
       }
     };
 
@@ -367,17 +430,13 @@ export default function App() {
     try {
       setError("");
       setIsBusy(true);
-      setStatus("Preparing...");
       await runCountdown(3);
 
-      setStatus("Capturing...");
       const dataUrl = captureFrameToDataUrl();
       setLastShot(dataUrl);
       setPendingCapture(dataUrl);
       setCaptureSource("camera");
       setSelectedFileName("");
-      setStatus("Photo captured");
-
       await processPendingCapture({
         image: dataUrl,
         source: "camera",
@@ -399,16 +458,32 @@ export default function App() {
       reader.readAsDataURL(file);
     });
 
-  const resetCaptureModal = () => {
-    setShowCaptureModal(false);
-    setPendingCapture("");
-    setCaptureError("");
-    setCaptureFilename("");
-    setCaptureResultStatus("");
-    setCaptureResultTitle("");
-    setCaptureResultSub("");
-    setSelectedFileName("");
-    setLastShot(null);
+  const resetCaptureModal = async () => {
+    const filenameToDelete = captureFilename;
+
+    try {
+      if (filenameToDelete) {
+        await fetch(`${API_BASE_URL}/capture/delete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ capture_filename: filenameToDelete }),
+        });
+      }
+    } catch (e) {
+      console.error("[capture] delete failed", e);
+    } finally {
+      setShowCaptureModal(false);
+      setPendingCapture("");
+      setCaptureError("");
+      setCaptureFilename("");
+      setCaptureResultStatus("");
+      setCaptureResultTitle("");
+      setCaptureResultSub("");
+      setSelectedFileName("");
+      setLastShot(null);
+      setError("");
+      setStatus("Camera ready");
+    }
   };
 
   const handleCostumeSelect = (costumeId) => {
@@ -450,7 +525,6 @@ export default function App() {
       setPendingCapture(dataUrl);
       setCaptureSource("gallery");
       setSelectedFileName(file.name);
-      setStatus("Gallery photo selected");
 
       await processPendingCapture({
         image: dataUrl,
@@ -486,7 +560,6 @@ export default function App() {
       setCaptureFilename("");
       resetJobState();
 
-      setStatus("Checking face...");
       const confirmRes = await fetch(`${API_BASE_URL}/capture-confirmation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -513,7 +586,6 @@ export default function App() {
         );
       }
 
-      setStatus("Uploading photo...");
       const res = await fetch(`${API_BASE_URL}/capture`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -526,7 +598,6 @@ export default function App() {
       }
 
       setCaptureFilename(json.filename);
-      setStatus(`Photo saved: ${json.filename}`);
       setCaptureSource(source);
       setSelectedFileName(fileName);
       setPendingCapture(image);
@@ -534,7 +605,7 @@ export default function App() {
       setCaptureResultTitle(
         source === "gallery"
           ? "Foto galeri berhasil diupload"
-          : "Foto berhasil diambil"
+          : "Foto Berhasil Diambil"
       );
       setCaptureResultSub("Lanjutkan ke pilih seragam.");
       setShowCaptureModal(true);
@@ -561,6 +632,21 @@ export default function App() {
     }
   };
 
+  const uploadCaptureImage = async (image) => {
+    const res = await fetch(`${API_BASE_URL}/capture`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.ok === false) {
+      throw new Error(json.detail || "Upload failed");
+    }
+
+    return String(json.filename || "");
+  };
+
   const handleCaptureResultContinue = () => {
     if (captureResultStatus !== "success" || !captureFilename) return;
     setShowCaptureModal(false);
@@ -568,13 +654,33 @@ export default function App() {
   };
 
   const handleStartProcessing = async () => {
-    if (!captureFilename || !selectedCostumeId) return;
+    if (!captureFilename || !selectedCostumeId || isJobLocked) return;
 
     try {
-      const filename = captureFilename;
+      let filename = captureFilename;
       const costumeId = selectedCostumeId;
       setError("");
-      await startSwapJob(filename, costumeId);
+      try {
+        await startSwapJob(filename, costumeId);
+      } catch (startError) {
+        const startMessage = startError?.message || String(startError);
+        const missingCapture =
+          /capture file not found/i.test(startMessage) ||
+          /file not found/i.test(startMessage);
+
+        if (!missingCapture || !pendingCapture) {
+          throw startError;
+        }
+
+        filename = await uploadCaptureImage(pendingCapture);
+        if (!filename) {
+          throw startError;
+        }
+
+        setCaptureFilename(filename);
+        await startSwapJob(filename, costumeId);
+      }
+
       resetFlow();
     } catch (e) {
       console.error(e);
@@ -620,11 +726,11 @@ export default function App() {
               <img className="welcomeAvatar" src={aiFace} alt="AI assistant" />
             </div>
           </div>
-          <h1 className="welcomeTitle">
-            Welcome to
-            <span>BCA Galeri Sentul</span>
-            <span>AI Video Generator</span>
-          </h1>
+          <div className="welcomeTitle">
+            <p className="welcomeEyebrow">Selamat Datang di</p>
+            <h1 className="welcomeHeadline">Seragam BCA AI Video Generator</h1>
+            <p className="welcomeLocation">Galeri BCA Sentul</p>
+          </div>
           <button
             type="button"
             className="welcomeButton"
@@ -660,11 +766,13 @@ export default function App() {
               <img className="concernAvatarImage" src={aiFace} alt="AI assistant" />
             </div>
           </div>
-          <div className="stageStep">Consent</div>
-          <div className="stageTitle">Data Pengguna</div>
-          <div className="stageSub">
-            Mohon persetujuan penggunaan foto untuk proses AI face swap.
-          </div>
+          <div className="stageStep">Notice</div>
+          <div className="stageTitle">Pemberitahuan Penggunaan Data</div>
+          {/* <div className="stageSub">
+            Halaman ini merupakan pemberitahuan penggunaan foto untuk proses AI
+            face swap. Dasar pemrosesan dilakukan berdasarkan kepentingan yang
+            sah (legitimate interest), bukan persetujuan.
+          </div> */}
           <label className="consentCard">
             <input
               type="checkbox"
@@ -674,11 +782,13 @@ export default function App() {
               }
             />
             <span className="consentCopy">
-              Saya dengan ini memberikan persetujuan kepada PT Bank Central Asia tbk. ("BCA") untuk memproses data pribadi saya berupa foto diri untuk tujuan penampilan seragam BCA menggunakan artificial intelligence (AI). Data pribadi saya hanya akan diproses sesuai tujuan tersebut, tidak akan diberikan ke pihak ketiga, dan tidak akan disimpan oleh BCA. Seluruh pemrosesan data pribadi dilakukan sesuai dengan Kebijakan Pelindungan Data Pribadi BCA dan peraturan perundang-undangan yang berlaku.
+              Dengan menekan tombol dibawah ini, Anda setuju bahwa BCA akan memproses data pribadi Anda berupa foto diri Anda untuk keperluan memproses dan menampilkan  foto Anda menggunakan seragam BCA menggunakan artificial intelligence (AI) pada mesin ini. BCA tidak akan menyimpan maupun memberikan foto diri Anda kepada pihak lain. Seluruh pemrosesan dilakukan sesuai dengan Kebijakan Pelindungan Data Pribadi BCA dan peraturan perundang-undangan yang berlaku.
             </span>
           </label>
           {showConsentError ? (
-            <div className="stageError">Anda harus menyetujui syarat ini.</div>
+            <div className="stageError">
+              Anda harus membaca dan mengonfirmasi notice ini.
+            </div>
           ) : null}
           <div className="concernActions">
             <button
@@ -686,7 +796,7 @@ export default function App() {
               className="stagePrimaryButton concernPrimaryButton"
               onClick={handleConcernContinue}
             >
-              Lanjut
+              Setuju
             </button>
           </div>
           {/* <button
@@ -719,7 +829,7 @@ export default function App() {
         </div> */}
         <div className="stageCard">
           <div className="stageStep">Pilih Gender</div>
-          <div className="stageTitle">Choose Gender</div>
+          <div className="stageTitle">Untuk memulai permainan</div>
           <div className="stageSub">
             Pilih gender terlebih dahulu untuk menampilkan pilihan seragam yang
             sesuai.
@@ -776,7 +886,7 @@ export default function App() {
             <button
               type="button"
               className="stageGhostButton"
-              onClick={() => setPage("concern")}
+              onClick={() => setPage("welcome")}
             >
               Kembali
             </button>
@@ -796,21 +906,9 @@ export default function App() {
   if (page === "costume") {
     return (
       <div className="costumePage">
-        <div className="welcomeBrand">
-          <img
-            className="welcomeBrandLogo"
-            src="/src/assets/BCA_white.png"
-            alt="BCA"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = logoBcaFallback;
-            }}
-          />
-        </div>
-
         <div className="costumeCard">
           <div className="costumeStep">Pilih Seragam</div>
-          <h2 className="costumeTitle">Choose Costume</h2>
+          <h2 className="costumeTitle">Pilih Seragammu</h2>
           <div className="costumeMeta">
             Menampilkan {visibleCostumes.length} dari {costumeOptions.length} seragam
             untuk gender {selectedGenderLabel || "-"}.
@@ -891,6 +989,7 @@ export default function App() {
           ) : null}
 
           {error ? <div className="costumeInlineError">{error}</div> : null}
+          {jobLockMessage ? <div className="costumeInlineError">{jobLockMessage}</div> : null}
 
           <div className="costumeActionsRow">
             <button
@@ -904,9 +1003,9 @@ export default function App() {
               type="button"
               className="costumeNext"
               onClick={handleStartProcessing}
-              disabled={!selectedCostumeId || !captureFilename}
+              disabled={!selectedCostumeId || !captureFilename || isJobLocked}
             >
-              Proses AI
+              Lanjutkan Proses
             </button>
           </div>
         </div>
@@ -932,20 +1031,9 @@ export default function App() {
       >
         &#8592;
       </button>
-      <div className="welcomeBrand">
-        <img
-          className="welcomeBrandLogo"
-          src="/src/assets/BCA_white.png"
-          alt="BCA"
-          onError={(e) => {
-            e.currentTarget.onerror = null;
-            e.currentTarget.src = logoBcaFallback;
-          }}
-        />
-      </div>
-      <div className="captureHeader">Ambil Foto</div>
+      <div className="captureHeader">Ambil Foto Anda</div>
       <div className="captureGreeting">
-        <div className="captureGuide">Silakan posisikan wajah di dalam oval</div>
+        <div className="captureGuide">Posisikan wajah anda dalam lingkaran oval</div>
       </div>
 
       <div className="captureBody">
@@ -974,8 +1062,6 @@ export default function App() {
         </span>
         <span className="statusText">{status}</span>
       </div>
-
-      {error ? <div className="errorText">{error}</div> : null}
 
       {showCaptureModal ? (
         <div className="modalOverlay">

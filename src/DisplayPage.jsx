@@ -4,6 +4,7 @@ import processingVideo from "./assets/media1.mp4";
 
 const API_BASE_URL = "http://localhost:8000";
 const POLL_INTERVAL_MS = 1500;
+const PREVIEW_DISPLAY_MS = 30 * 1000;
 const AUTO_CLEAR_MS = 5 * 60 * 1000;
 const ACTIVE_STATUSES = new Set([
   "queued",
@@ -34,8 +35,27 @@ const toMediaUrl = (path) => {
   return `${API_BASE_URL}/${normalized}`;
 };
 
+const toDisplayName = (value) =>
+  String(value || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const getPreviewLoadingUrl = (payload) =>
+  toMediaUrl(
+    payload?.preview_url ||
+      payload?.video_url ||
+      payload?.url ||
+      payload?.file_path ||
+      payload?.path ||
+      payload?.video_path ||
+      ""
+  );
+
 const normalizeStatusPayload = (payload) => {
   const status = String(payload?.status || "idle").toLowerCase();
+  const costumeName = toDisplayName(payload?.costume?.name || "");
   return {
     ok: payload?.ok !== false,
     jobId: String(payload?.job_id || ""),
@@ -49,6 +69,7 @@ const normalizeStatusPayload = (payload) => {
     stage: String(payload?.stage || status),
     processedFrames: Number(payload?.processed_frames || 0),
     totalFrames: Number(payload?.total_frames || 0),
+    costumeName,
   };
 };
 
@@ -73,16 +94,19 @@ export default function DisplayPage() {
     stage: "idle",
     processedFrames: 0,
     totalFrames: 0,
+    costumeName: "",
   });
   const [requestError, setRequestError] = useState("");
+  const [idlePreviewUrl, setIdlePreviewUrl] = useState("");
   const lastJobIdRef = useRef("");
   const loadLatestDisplayRef = useRef(null);
-  const previewVideoRef = useRef(null);
   const consumeTimerRef = useRef(null);
   const consumedJobIdRef = useRef("");
   const isActive = ACTIVE_STATUSES.has(displayState.status);
   const isDone = displayState.status === "done" && displayState.previewUrl;
   const isError = displayState.status === "error";
+  const displayTitle = displayState.costumeName || "Preview";
+  const processingPreviewUrl = displayState.previewUrl || processingVideo;
   const stageKey = String(displayState.stage || displayState.status || "idle").toLowerCase();
   const processingProgress = Math.max(
     0,
@@ -150,34 +174,61 @@ export default function DisplayPage() {
   }, []);
 
   useEffect(() => {
+    if (window.location.pathname !== "/display") return;
+    let isMounted = true;
+
+    const loadIdlePreview = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/preview-loading/male`, {
+          cache: "no-store",
+        });
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok || json?.ok === false) {
+          return;
+        }
+
+        const nextUrl = getPreviewLoadingUrl(json);
+        if (!isMounted || !nextUrl) return;
+        setIdlePreviewUrl(nextUrl);
+      } catch (error) {
+        console.error("[display] failed to load idle preview", error);
+      }
+    };
+
+    loadIdlePreview();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!displayState.jobId || displayState.status !== "done") return;
     if (lastJobIdRef.current === displayState.jobId) return;
     lastJobIdRef.current = displayState.jobId;
   }, [displayState.jobId, displayState.status]);
 
   useEffect(() => {
-    if (!isDone || !displayState.jobId || !previewVideoRef.current) return undefined;
+    if (!isDone || !displayState.jobId) return undefined;
+    if (lastJobIdRef.current !== displayState.jobId) return undefined;
 
-    const video = previewVideoRef.current;
     consumedJobIdRef.current = "";
-    console.log("[display] preview armed", {
+    if (consumeTimerRef.current) {
+      window.clearTimeout(consumeTimerRef.current);
+      consumeTimerRef.current = null;
+    }
+
+    console.log("[display] preview shown -> start 30s timer", {
       jobId: displayState.jobId,
       previewUrl: displayState.previewUrl,
     });
 
-    const clearConsumeTimer = () => {
-      if (consumeTimerRef.current) {
-        window.clearTimeout(consumeTimerRef.current);
-        consumeTimerRef.current = null;
-        console.log("[display] consume timer cleared", { jobId: displayState.jobId });
-      }
-    };
-
-    const consumePreview = async () => {
+    consumeTimerRef.current = window.setTimeout(async () => {
       if (consumedJobIdRef.current === displayState.jobId) return;
       consumedJobIdRef.current = displayState.jobId;
-      clearConsumeTimer();
-      console.log("[display] consuming preview", { jobId: displayState.jobId });
+      consumeTimerRef.current = null;
+      console.log("[display] preview timeout -> consume and reset", {
+        jobId: displayState.jobId,
+      });
 
       try {
         const response = await fetch(`${API_BASE_URL}/display/consume`, {
@@ -194,49 +245,22 @@ export default function DisplayPage() {
       } catch (error) {
         console.error("[display] consume failed", error);
       } finally {
-        console.log("[display] redirect to /display after consume", {
-          jobId: displayState.jobId,
-        });
+        await loadLatestDisplayRef.current?.();
         window.location.href = "/display";
       }
-    };
-
-    const handlePlay = () => {
-      clearConsumeTimer();
-      console.log("[display] preview play -> start 30s timer", { jobId: displayState.jobId });
-      consumeTimerRef.current = window.setTimeout(consumePreview, 30000);
-    };
-
-    const handlePause = () => {
-      console.log("[display] preview pause -> stop timer", { jobId: displayState.jobId });
-      clearConsumeTimer();
-    };
-
-    const handleEnded = () => {
-      console.log("[display] preview ended -> consume now", { jobId: displayState.jobId });
-      consumePreview();
-    };
-
-    video.addEventListener("play", handlePlay);
-    video.addEventListener("pause", handlePause);
-    video.addEventListener("ended", handleEnded);
-
-    if (!video.paused) {
-      handlePlay();
-    }
+    }, PREVIEW_DISPLAY_MS);
 
     return () => {
-      clearConsumeTimer();
-      console.log("[display] preview cleanup", { jobId: displayState.jobId });
-      video.removeEventListener("play", handlePlay);
-      video.removeEventListener("pause", handlePause);
-      video.removeEventListener("ended", handleEnded);
+      if (consumeTimerRef.current) {
+        window.clearTimeout(consumeTimerRef.current);
+        consumeTimerRef.current = null;
+      }
     };
-  }, [displayState.jobId, isDone]);
+  }, [displayState.jobId, displayState.previewUrl, isDone]);
 
   useEffect(() => {
     if (!displayState.jobId) return undefined;
-    if (displayState.status !== "done" && displayState.status !== "error") {
+    if (displayState.status !== "error") {
       return undefined;
     }
 
@@ -271,7 +295,7 @@ export default function DisplayPage() {
             }}
           />
         </div> */}
-        <div className="previewHeader">Display</div>
+        <div className="previewHeader">{displayTitle}</div>
         <div className="previewSub">{requestError}</div>
         <div className="previewFrameWrap">
           <div className="previewFrame">
@@ -296,17 +320,11 @@ export default function DisplayPage() {
             }}
           />
         </div> */}
-        <div className="previewHeader">Preview</div>
-        <div className="previewSub">
-          {displayState.createdAt
-            ? `Created at ${displayState.createdAt}`
-            : "Menampilkan hasil terbaru."}
-        </div>
+        <div className="previewHeader">{displayTitle}</div>
 
         <div className="previewFrameWrap">
           <div className="previewFrame">
             <video
-              ref={previewVideoRef}
               key={displayState.jobId}
               className="previewVideo"
               src={displayState.previewUrl}
@@ -337,17 +355,19 @@ export default function DisplayPage() {
           />
         </div> */}
         <div className="processingCard">
+          <div className="processingHeader">
+            <div className="processingTitle">{displayTitle}</div>
+          </div>
           <video
             className="processingPreviewVideo"
-            src={processingVideo}
+            src={processingPreviewUrl}
             autoPlay
             loop
             muted
             playsInline
           />
           <div className="processingStepLabel">Loading</div>
-          <div className="processingTitle">Proses face swap oleh AI</div>
-          <div className="processingSub">Tunggu sebentar, video sedang diproses.</div>
+          <div className="processingSub">Mohon tunggu, video sedang diproses.</div>
           <div className="processingProgressWrap">
             <div
               className="processingProgressTrack"
@@ -382,7 +402,7 @@ export default function DisplayPage() {
             }}
           />
         </div> */}
-        <div className="previewHeader">Preview</div>
+        <div className="previewHeader">{displayTitle}</div>
         <div className="previewSub">
           {displayState.message || "Proses gagal. Silakan ulangi dari layar utama."}
         </div>
@@ -408,11 +428,21 @@ export default function DisplayPage() {
           }}
         />
       </div> */}
-      <div className="previewHeader">Preview</div>
+      <div className="previewHeader">{displayTitle}</div>
       {/* <div className="previewSub">Menunggu hasil terbaru.</div> */}
       <div className="previewFrameWrap">
         <div className="previewFrame">
-          {/* <div className="previewEmpty">Belum ada hasil untuk ditampilkan.</div> */}
+          {idlePreviewUrl ? (
+            <video
+              className="previewVideo"
+              src={idlePreviewUrl}
+              autoPlay
+              muted
+              playsInline
+              loop
+              controls={false}
+            />
+          ) : null}
         </div>
       </div>
     </div>

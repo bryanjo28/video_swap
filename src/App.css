@@ -87,15 +87,15 @@
 .welcomeCard {
   position: relative;
   z-index: 1;
-  width: min(520px, 100%);
+  width: min(460px, 100%);
   max-width: 100%;
   min-height: calc(100dvh - 40px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  padding: 24px 6px 24px;
+  gap: 22px;
+  padding: 88px 18px 72px;
   text-align: center;
   background: transparent;
   border: none;
@@ -106,7 +106,7 @@
 
 .welcomeBrand {
   position: fixed;
-  top: max(16px, env(safe-area-inset-top));
+  top: max(34px, calc(env(safe-area-inset-top) + 12px));
   z-index: 4;
   pointer-events: none;
 }
@@ -116,15 +116,23 @@
   }
 
 .welcomeBrandLogo {
-  height: 38px;
+  height: 50px;
   width: auto;
   object-fit: contain;
   filter: drop-shadow(0 10px 20px rgba(2, 22, 58, 0.35));
 }
 
+.captureBrand {
+  top: max(10px, calc(env(safe-area-inset-top) + 2px));
+}
+
+.captureBrand .welcomeBrandLogo {
+  height: 40px;
+}
+
 .welcomeAvatarWrap {
   margin-top: 0;
-  margin-bottom: 2px;
+  margin-bottom: 14px;
 }
 
 .welcomeAvatarRing {
@@ -152,23 +160,43 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 10px;
+  max-width: 420px;
   font-family: var(--font-sans);
-  font-size: clamp(32px, 8.6vw, 48px);
-  font-weight: 800;
-  line-height: 1.2;
-  color: rgba(255, 255, 255, 0.92);
   text-shadow: 0 10px 26px rgba(2, 20, 52, 0.42);
 }
 
-.welcomeTitle span {
-  display: block;
-  font-size: clamp(36px, 9.3vw, 52px);
+.welcomeEyebrow,
+.welcomeHeadline,
+.welcomeLocation {
+  margin: 0;
+}
+
+.welcomeEyebrow {
+  font-size: clamp(22px, 5vw, 28px);
+  font-weight: 800;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.welcomeHeadline {
+  font-size: clamp(36px, 8.2vw, 56px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
   color: #ffffff;
 }
 
+.welcomeLocation {
+  font-size: clamp(24px, 5.4vw, 34px);
+  font-weight: 700;
+  line-height: 1.18;
+  color: rgba(209, 238, 255, 0.96);
+}
+
 .welcomeButton {
-  margin-top: 80px;
+  margin-top: 30px;
   margin-bottom: 0;
   min-width: min(86vw, 320px);
   border: 1px solid rgba(156, 227, 255, 0.5);
@@ -470,11 +498,10 @@
 }
 
 .genderBadgeIcon {
-  width: 42px;
-  height: 42px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
   display: block;
-  filter: brightness(0) invert(1);
 }
 
 .maleBadge {
@@ -727,7 +754,8 @@
 .costumeImage {
   width: 100%;
   height: 158px;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center top;
   border-radius: 12px;
   display: block;
 }
@@ -1282,9 +1310,16 @@
   border-radius: 20px;
   padding: 20px 22px;
   display: grid;
-  gap: 12px;
+  gap: 10px;
   text-align: center;
   animation: cardIn 0.55s ease-out;
+}
+
+.processingHeader {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
 }
 
 .processingStepLabel {
@@ -1297,7 +1332,11 @@
 
 .processingTitle {
   font-weight: 800;
-  font-size: 16px;
+  font-size: clamp(24px, 6vw, 34px);
+  line-height: 1.08;
+  color: #ffffff;
+  text-shadow: 0 10px 24px rgba(2, 18, 52, 0.34);
+  overflow-wrap: anywhere;
 }
 
 .processingProgressWrap {
@@ -1351,6 +1390,7 @@
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.06);
+  margin-top: 2px;
 }
 
 /* PREVIEW PAGE */
@@ -1915,29 +1955,42 @@
 @media (max-width: 720px) {
   .welcomeCard {
     min-height: calc(100dvh - 40px);
-    padding: 18px 4px 20px;
-    gap: 12px;
+    justify-content: center;
+    padding: 92px 14px 56px;
+    gap: 18px;
   }
 
   .welcomeBrand {
-    top: max(150px, env(safe-area-inset-top));
+    top: max(40px, calc(env(safe-area-inset-top) + 16px));
+  }
+
+  .captureBrand {
+    top: max(8px, env(safe-area-inset-top));
   }
 
   .welcomeBrandDisplay{
     top: max(50px, env(safe-area-inset-top));
   }
   .welcomeTitle {
-    font-size: clamp(28px, 8vw, 40px);
+    max-width: 94%;
   }
 
-  .welcomeTitle span {
+  .welcomeEyebrow {
+    font-size: clamp(20px, 5.6vw, 24px);
+  }
+
+  .welcomeHeadline {
     font-size: clamp(34px, 9vw, 46px);
+  }
+
+  .welcomeLocation {
+    font-size: clamp(22px, 5.8vw, 28px);
   }
 
   .welcomeButton {
     min-width: min(88vw, 300px);
     font-size: 22px;
-    margin-top: 4px;
+    margin-top: 18px;
   }
 
   .stageCard {
@@ -1953,6 +2006,11 @@
     width: 72px;
     height: 72px;
     font-size: 28px;
+  }
+
+  .genderBadgeIcon {
+    width: 48px;
+    height: 48px;
   }
 
   .costumeCard {
@@ -2043,6 +2101,93 @@
 
   .displayMeta {
     width: min(92vw, 720px);
+  }
+}
+
+@media (orientation: portrait) {
+  .welcomePage,
+  .stagePage,
+  .costumePage,
+  .capturePage,
+  .previewPage,
+  .displayPage {
+    padding-left: clamp(16px, 4vw, 28px);
+    padding-right: clamp(16px, 4vw, 28px);
+  }
+
+  .welcomeBrand {
+    top: max(34px, calc(env(safe-area-inset-top) + 14px));
+  }
+
+  .captureBrand {
+    top: max(10px, calc(env(safe-area-inset-top) + 2px));
+  }
+
+  .welcomeCard {
+    width: min(460px, 100%);
+    min-height: calc(100dvh - 48px);
+    padding: clamp(96px, 12dvh, 132px) 18px clamp(56px, 8dvh, 88px);
+    gap: clamp(18px, 2.6dvh, 26px);
+  }
+
+  .welcomeAvatarWrap {
+    margin-bottom: clamp(10px, 1.8dvh, 18px);
+  }
+
+  .welcomeButton {
+    margin-top: clamp(12px, 2.4dvh, 26px);
+  }
+
+  .stageCard,
+  .costumeCard {
+    width: min(460px, 92vw);
+  }
+
+  .costumePage {
+    padding-top: clamp(82px, 10dvh, 118px);
+    padding-bottom: clamp(24px, 4dvh, 40px);
+  }
+
+  .capturePage,
+  .previewPage,
+  .displayPage {
+    padding-top: clamp(76px, 8dvh, 110px);
+    padding-bottom: clamp(20px, 4dvh, 36px);
+  }
+
+  .frameShell {
+    width: min(88vw, 560px);
+  }
+
+  .previewFrame {
+    width: min(90vw, 440px);
+    height: min(68dvh, calc(90vw * 16 / 9));
+  }
+
+  .displayMeta {
+    width: min(90vw, 720px);
+  }
+}
+
+@media (orientation: portrait) and (min-height: 1200px) {
+  .welcomeCard {
+    padding-top: 140px;
+    padding-bottom: 96px;
+  }
+
+  .welcomeBrand {
+    top: max(48px, calc(env(safe-area-inset-top) + 24px));
+  }
+
+  .captureBrand {
+    top: max(16px, calc(env(safe-area-inset-top) + 4px));
+  }
+
+  .costumePage,
+  .capturePage,
+  .previewPage,
+  .displayPage {
+    padding-top: 104px;
   }
 }
 
