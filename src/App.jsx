@@ -51,9 +51,7 @@ export default function App() {
   const [page, setPage] = useState("welcome");
   const [formData, setFormData] = useState({
     gender: "",
-    consent: false,
   });
-  const [formTouched, setFormTouched] = useState(false);
   const [genderTouched, setGenderTouched] = useState(false);
   const [genderWarning, setGenderWarning] = useState("");
 
@@ -131,8 +129,6 @@ export default function App() {
     ? formData.gender.charAt(0).toUpperCase() + formData.gender.slice(1)
     : "";
 
-  const canContinue = formData.consent;
-  const showConsentError = formTouched && !formData.consent;
   const showGenderError = genderTouched && !formData.gender;
   const isJobLocked = ACTIVE_JOB_STATUSES.has(activeJobState.status);
   const jobLockMessage =
@@ -170,8 +166,7 @@ export default function App() {
 
   const resetFlow = () => {
     setPage("welcome");
-    setFormData({ gender: "", consent: false });
-    setFormTouched(false);
+    setFormData({ gender: "" });
     setGenderTouched(false);
     setGenderWarning("");
     setStatus("Ready");
@@ -692,8 +687,6 @@ export default function App() {
   };
 
   const handleConcernContinue = () => {
-    setFormTouched(true);
-    if (!canContinue) return;
     setPage("gender");
   };
 
@@ -773,23 +766,11 @@ export default function App() {
             face swap. Dasar pemrosesan dilakukan berdasarkan kepentingan yang
             sah (legitimate interest), bukan persetujuan.
           </div> */}
-          <label className="consentCard">
-            <input
-              type="checkbox"
-              checked={formData.consent}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, consent: e.target.checked }))
-              }
-            />
+          <div className="consentCard">
             <span className="consentCopy">
               Dengan menekan tombol dibawah ini, Anda setuju bahwa BCA akan memproses data pribadi Anda berupa foto diri Anda untuk keperluan memproses dan menampilkan  foto Anda menggunakan seragam BCA menggunakan artificial intelligence (AI) pada mesin ini. BCA tidak akan menyimpan maupun memberikan foto diri Anda kepada pihak lain. Seluruh pemrosesan dilakukan sesuai dengan Kebijakan Pelindungan Data Pribadi BCA dan peraturan perundang-undangan yang berlaku.
             </span>
-          </label>
-          {showConsentError ? (
-            <div className="stageError">
-              Anda harus membaca dan mengonfirmasi notice ini.
-            </div>
-          ) : null}
+          </div>
           <div className="concernActions">
             <button
               type="button"
