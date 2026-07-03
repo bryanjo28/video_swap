@@ -828,12 +828,12 @@ export default function App() {
           />
         </div> */}
         <div className="stageCard">
-          <div className="stageStep">Pilih Gender</div>
-          <div className="stageTitle">Untuk memulai permainan</div>
-          <div className="stageSub">
+          <div className="stageStep">Step 1</div>
+          <div className="stageTitle"> Pilih Gender Untuk memulai permainan</div>
+          {/* <div className="stageSub">
             Pilih gender terlebih dahulu untuk menampilkan pilihan seragam yang
             sesuai.
-          </div>
+          </div> */}
           <div className="genderChoiceGrid">
             <button
               type="button"
@@ -907,7 +907,7 @@ export default function App() {
     return (
       <div className="costumePage">
         <div className="costumeCard">
-          <div className="costumeStep">Pilih Seragam</div>
+          <div className="costumeStep">Step 3</div>
           <h2 className="costumeTitle">Pilih Seragammu</h2>
           <div className="costumeMeta">
             Menampilkan {visibleCostumes.length} dari {costumeOptions.length} seragam
@@ -1031,6 +1031,7 @@ export default function App() {
       >
         &#8592;
       </button>
+      <div className="stageStep2">Step 2</div>
       <div className="captureHeader">Ambil Foto Anda</div>
       <div className="captureGreeting">
         <div className="captureGuide">Posisikan wajah anda dalam lingkaran oval</div>

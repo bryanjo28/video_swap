@@ -340,6 +340,15 @@
   text-transform: uppercase;
 }
 
+.stageStep2 {
+  font-weight: 700;
+  color: white;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+
 .stageTitle {
   font-family: var(--font-display);
   font-size: 28px;
