@@ -16,13 +16,6 @@ const safeText = (value) => {
   return String(value);
 };
 
-const toSlug = (value) =>
-  String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
 const normalizePreviewLoadingStatus = (payload, gender) => {
   const fileName =
     String(
@@ -327,9 +320,6 @@ export default function AdminPage() {
     }
   };
 
-  const slugPreview = toSlug(addForm.name) || "(auto generate)";
-  const editSlugPreview = toSlug(editForm.name) || "(auto generate)";
-
   const handleOpenEditModal = (item) => {
     setEditError("");
     setEditForm({
@@ -580,7 +570,6 @@ export default function AdminPage() {
                 <thead>
                   <tr>
                     <th>No</th>
-                    <th>ID</th>
                     <th>Name</th>
                     <th>Gender</th>
                     <th>Active</th>
@@ -591,21 +580,20 @@ export default function AdminPage() {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={7}>Loading costumes...</td>
+                      <td colSpan={6}>Loading costumes...</td>
                     </tr>
                   ) : error ? (
                     <tr>
-                      <td colSpan={7}>Failed to load costumes: {error}</td>
+                      <td colSpan={6}>Failed to load costumes: {error}</td>
                     </tr>
                   ) : filteredCostumes.length === 0 ? (
                     <tr>
-                      <td colSpan={7}>No data matches current filter/search.</td>
+                      <td colSpan={6}>No data matches current filter/search.</td>
                     </tr>
                   ) : (
                     pagedCostumes.map((item, index) => (
                       <tr key={`${safeText(item?.id)}-${index}`}>
                         <td>{(currentPageSafe - 1) * ITEMS_PER_PAGE + index + 1}</td>
-                        <td>{safeText(item?.id)}</td>
                         <td>{safeText(item?.name)}</td>
                         <td>{safeText(item?.gender)}</td>
                         <td>
@@ -850,10 +838,6 @@ export default function AdminPage() {
                 placeholder="e.g. Green Shirt"
                 disabled={addSubmitting}
               />
-
-              <label className="modalLabel">ID (Slug - Auto)</label>
-              <div className="modalReadOnly">{slugPreview}</div>
-
               <label className="modalLabel">Gender</label>
               <div className="modalRadioRow">
                 <label className="modalRadio">
@@ -967,9 +951,6 @@ export default function AdminPage() {
             </div>
 
             <form className="modalForm" onSubmit={handleEditSubmit}>
-              <label className="modalLabel">Current ID</label>
-              <div className="modalReadOnly">{safeText(editForm.id)}</div>
-
               <label className="modalLabel" htmlFor="edit-costume-name">
                 Name
               </label>
@@ -984,10 +965,6 @@ export default function AdminPage() {
                 placeholder="e.g. Green Shirt"
                 disabled={editSubmitting}
               />
-
-              <label className="modalLabel">ID (Slug - Follow Name)</label>
-              <div className="modalReadOnly">{editSlugPreview}</div>
-
               <label className="modalLabel">Gender</label>
               <div className="modalRadioRow">
                 <label className="modalRadio">
@@ -1032,7 +1009,7 @@ export default function AdminPage() {
               </label>
 
               <label className="modalLabel" htmlFor="edit-costume-video">
-                Video File (Optional)
+                Video File (Required)
               </label>
               <input
                 id="edit-costume-video"
@@ -1049,7 +1026,7 @@ export default function AdminPage() {
               />
 
               <label className="modalLabel" htmlFor="edit-costume-thumb">
-                Thumbnail File (Optional)
+                Thumbnail File (Required)
               </label>
               <input
                 id="edit-costume-thumb"

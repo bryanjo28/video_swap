@@ -7,7 +7,6 @@ import "./App.css";
 
 const API_BASE_URL = "http://localhost:8000";
 const COSTUMES_PER_PAGE = 4;
-const COSTUME_REFRESH_INTERVAL_MS = 5000;
 const JOB_LOCK_REFRESH_INTERVAL_MS = 2000;
 const ACTIVE_JOB_STATUSES = new Set(["queued", "running", "done"]);
 const toTitleCase = (value) =>
@@ -243,14 +242,6 @@ export default function App() {
     if (page !== "gender" && page !== "costume") return;
 
     loadCostumesRef.current?.();
-
-    const intervalId = window.setInterval(() => {
-      loadCostumesRef.current?.();
-    }, COSTUME_REFRESH_INTERVAL_MS);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
   }, [page]);
 
   useEffect(() => {
