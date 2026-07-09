@@ -480,6 +480,27 @@
   font-weight: 700;
 }
 
+.adminSortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.adminSortIndicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  color: var(--admin-accent);
+}
+
 .adminTable td {
   border-bottom: 1px solid rgba(33, 64, 140, 0.08);
   color: var(--admin-text);

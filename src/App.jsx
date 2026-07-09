@@ -101,9 +101,19 @@ export default function App() {
   const costumeOptions = useMemo(() => {
     const selectedGender = String(formData.gender || "").toLowerCase();
     if (!selectedGender) return [];
-    return allCostumes.filter(
+    const collator = new Intl.Collator(undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    const filteredItems = allCostumes.filter(
       (item) => item.isActive && item.gender === selectedGender
     );
+
+    filteredItems.sort((left, right) =>
+      collator.compare(String(left?.name || ""), String(right?.name || ""))
+    );
+
+    return filteredItems;
   }, [allCostumes, formData.gender]);
 
   const totalCostumePages = Math.max(

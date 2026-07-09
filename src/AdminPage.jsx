@@ -61,6 +61,7 @@ export default function AdminPage() {
   const [genderFilter, setGenderFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [nameSortDirection, setNameSortDirection] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addSubmitting, setAddSubmitting] = useState(false);
@@ -234,20 +235,46 @@ export default function AdminPage() {
     });
   }, [costumes, genderFilter, activeFilter, searchQuery]);
 
+  const sortedCostumes = useMemo(() => {
+    const collator = new Intl.Collator(undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    const sortedItems = [...filteredCostumes];
+
+    sortedItems.sort((left, right) => {
+      const leftName = String(left?.name || "").trim();
+      const rightName = String(right?.name || "").trim();
+      const result = collator.compare(leftName, rightName);
+
+      if (result !== 0) {
+        return nameSortDirection === "asc" ? result : -result;
+      }
+
+      return 0;
+    });
+
+    return sortedItems;
+  }, [filteredCostumes, nameSortDirection]);
+
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredCostumes.length / ITEMS_PER_PAGE)
+    Math.ceil(sortedCostumes.length / ITEMS_PER_PAGE)
   );
   const currentPageSafe = Math.min(currentPage, totalPages);
 
   const pagedCostumes = useMemo(() => {
     const startIndex = (currentPageSafe - 1) * ITEMS_PER_PAGE;
-    return filteredCostumes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredCostumes, currentPageSafe]);
+    return sortedCostumes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [sortedCostumes, currentPageSafe]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [genderFilter, activeFilter, searchQuery]);
+  }, [genderFilter, activeFilter, searchQuery, nameSortDirection]);
+
+  const handleNameSortToggle = () => {
+    setNameSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+  };
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -570,7 +597,18 @@ export default function AdminPage() {
                 <thead>
                   <tr>
                     <th>No</th>
-                    <th>Name</th>
+                    <th>
+                      <button
+                        type="button"
+                        className="adminSortButton"
+                        onClick={handleNameSortToggle}
+                      >
+                        Name
+                        <span className="adminSortIndicator">
+                          {nameSortDirection === "asc" ? "↑" : "↓"}
+                        </span>
+                      </button>
+                    </th>
                     <th>Gender</th>
                     <th>Active</th>
                     <th>Foto Kostum</th>
