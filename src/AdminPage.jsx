@@ -16,6 +16,12 @@ const safeText = (value) => {
   return String(value);
 };
 
+const getGenderLabel = (value) => {
+  if (value === "female") return "Wanita";
+  if (value === "male") return "Pria";
+  return safeText(value);
+};
+
 const normalizePreviewLoadingStatus = (payload, gender) => {
   const fileName =
     String(
@@ -576,8 +582,8 @@ export default function AdminPage() {
                 {genderOptions.map((gender) => (
                   <option key={gender} value={gender}>
                     {gender === "all"
-                      ? "All Gender"
-                      : gender.charAt(0).toUpperCase() + gender.slice(1)}
+                      ? "Semua Gender"
+                      : getGenderLabel(gender)}
                   </option>
                 ))}
               </select>
@@ -633,7 +639,7 @@ export default function AdminPage() {
                       <tr key={`${safeText(item?.id)}-${index}`}>
                         <td>{(currentPageSafe - 1) * ITEMS_PER_PAGE + index + 1}</td>
                         <td>{safeText(item?.name)}</td>
-                        <td>{safeText(item?.gender)}</td>
+                        <td>{getGenderLabel(item?.gender)}</td>
                         <td>
                           <span
                             style={{
@@ -736,8 +742,8 @@ export default function AdminPage() {
               <div>
                 <h2>Upload Preview</h2>
                 <p className="adminSectionSub">
-                  Choose a gender, check active loading preview status, then upload or
-                  replace the video file.
+                  Pilih gender, cek status preview aktif, lalu upload atau ganti file
+                  video.
                 </p>
               </div>
             </div>
@@ -761,8 +767,8 @@ export default function AdminPage() {
                     }}
                     disabled={previewSubmitting}
                   >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
+                    <option value="male">Pria</option>
+                    <option value="female">Wanita</option>
                   </select>
                 </div>
 
@@ -791,7 +797,7 @@ export default function AdminPage() {
               <div className="adminPreviewStatusCard">
                 <div className="adminPreviewStatusHead">
                   <div className="adminPreviewStatusTitle">
-                    Status for {previewForm.gender === "female" ? "Female" : "Male"}
+                    Status untuk {getGenderLabel(previewForm.gender)}
                   </div>
                   <button
                     type="button"
@@ -889,7 +895,7 @@ export default function AdminPage() {
                     }
                     disabled={addSubmitting}
                   />
-                  <span>Male</span>
+                  <span>Pria</span>
                 </label>
                 <label className="modalRadio">
                   <input
@@ -902,7 +908,7 @@ export default function AdminPage() {
                     }
                     disabled={addSubmitting}
                   />
-                  <span>Female</span>
+                  <span>Wanita</span>
                 </label>
               </div>
 
@@ -1016,7 +1022,7 @@ export default function AdminPage() {
                     }
                     disabled={editSubmitting}
                   />
-                  <span>Male</span>
+                  <span>Pria</span>
                 </label>
                 <label className="modalRadio">
                   <input
@@ -1029,7 +1035,7 @@ export default function AdminPage() {
                     }
                     disabled={editSubmitting}
                   />
-                  <span>Female</span>
+                  <span>Wanita</span>
                 </label>
               </div>
 

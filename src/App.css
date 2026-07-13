@@ -58,6 +58,7 @@
   background-size: 240px 280px;
   opacity: 0.95;
   z-index: 0;
+  animation: starTwinkle 4.8s ease-in-out infinite, starDrift 16s linear infinite;
 }
 
 .welcomeGlow {
@@ -132,6 +133,7 @@
 }
 
 .welcomeHero {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -139,11 +141,14 @@
 }
 
 .welcomeAvatarWrap {
-  margin-top: 0;
+  position: relative;
+  margin-top: 8px;
   margin-bottom: 0;
+  animation: avatarFloat 3.6s ease-in-out infinite;
 }
 
 .welcomeAvatarRing {
+  position: relative;
   width: clamp(126px, 31vw, 166px);
   height: clamp(126px, 31vw, 166px);
   border-radius: 999px;
@@ -154,6 +159,26 @@
   box-shadow:
     0 0 0 6px rgba(126, 220, 255, 0.2),
     0 0 42px rgba(136, 220, 255, 0.48);
+  overflow: hidden;
+  animation: ringPulse 4.2s ease-in-out infinite;
+}
+
+.welcomeAvatarRing::before {
+  content: "";
+  position: absolute;
+  inset: -18% 20%;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.08) 40%,
+    rgba(255, 255, 255, 0.48) 50%,
+    rgba(255, 255, 255, 0.08) 60%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-180%) skewX(-18deg);
+  opacity: 0;
+  pointer-events: none;
+  animation: avatarScan 6.8s ease-in-out infinite;
 }
 
 .welcomeAvatar {
@@ -198,12 +223,13 @@
 
 .welcomeLocation {
   font-size: clamp(24px, 5.4vw, 34px);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.18;
   color: rgba(209, 238, 255, 0.96);
 }
 
 .welcomeButton {
+  position: relative;
   margin-top: 30px;
   margin-bottom: 0;
   min-width: min(86vw, 320px);
@@ -225,6 +251,29 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.36);
   cursor: pointer;
   transition: transform 0.12s ease, filter 0.2s ease;
+  overflow: hidden;
+}
+
+.welcomeButton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.08) 42%,
+    rgba(255, 255, 255, 0.42) 50%,
+    rgba(255, 255, 255, 0.08) 58%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-170%) skewX(-24deg);
+  pointer-events: none;
+  animation: buttonShine 4s ease-in-out infinite;
+}
+
+.welcomeButton > span {
+  position: relative;
+  z-index: 1;
 }
 
 .welcomeButton:hover {
@@ -900,7 +949,94 @@
   }
 }
 
+@keyframes avatarFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes ringPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 6px rgba(126, 220, 255, 0.2),
+      0 0 42px rgba(136, 220, 255, 0.48);
+  }
+  50% {
+    transform: scale(1.025);
+    box-shadow:
+      0 0 0 10px rgba(126, 220, 255, 0.15),
+      0 0 54px rgba(136, 220, 255, 0.62);
+  }
+}
+
+@keyframes starTwinkle {
+  0%,
+  100% {
+    opacity: 0.52;
+    filter: brightness(0.92);
+  }
+  50% {
+    opacity: 0.96;
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes starDrift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-8px, 6px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes buttonShine {
+  0%,
+  72%,
+  100% {
+    transform: translateX(-170%) skewX(-24deg);
+    opacity: 0;
+  }
+  78% {
+    opacity: 1;
+  }
+  92% {
+    transform: translateX(170%) skewX(-24deg);
+    opacity: 1;
+  }
+}
+
+@keyframes avatarScan {
+  0%,
+  64%,
+  100% {
+    transform: translateX(-180%) skewX(-18deg);
+    opacity: 0;
+  }
+  70% {
+    opacity: 0.92;
+  }
+  88% {
+    transform: translateX(180%) skewX(-18deg);
+    opacity: 0.92;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .welcomeStars,
+  .welcomeAvatarWrap,
+  .welcomeAvatarRing,
+  .welcomeAvatarRing::before,
+  .welcomeButton::after,
   .costumeCard,
   .costumeItem,
   .costumeItem::after {

@@ -16,6 +16,12 @@ const toTitleCase = (value) =>
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
+const getGenderLabel = (value) => {
+  if (value === "female") return "Wanita";
+  if (value === "male") return "Pria";
+  return "";
+};
+
 const toMediaUrl = (path) => {
   if (!path) return "";
   if (/^https?:\/\//i.test(path) || path.startsWith("data:")) return path;
@@ -138,9 +144,7 @@ export default function App() {
     };
   }, [allCostumes]);
 
-  const selectedGenderLabel = formData.gender
-    ? formData.gender.charAt(0).toUpperCase() + formData.gender.slice(1)
-    : "";
+  const selectedGenderLabel = getGenderLabel(formData.gender);
 
   const showGenderError = genderTouched && !formData.gender;
   const isJobLocked = ACTIVE_JOB_STATUSES.has(activeJobState.status);
@@ -530,9 +534,7 @@ export default function App() {
   const handleGenderSelect = (gender) => {
     if (!genderAvailability[gender]) {
       setGenderWarning(
-        `Costume untuk gender ${
-          gender === "male" ? "Male" : "Female"
-        } tidak tersedia saat ini.`
+        `Costume untuk gender ${getGenderLabel(gender)} tidak tersedia saat ini.`
       );
       return;
     }
@@ -764,8 +766,9 @@ export default function App() {
             </div>
           </div>
           <div className="welcomeTitle">
-            <p className="welcomeEyebrow">Selamat Datang di</p>
-            <h1 className="welcomeHeadline">Seragam BCA AI Video Generator</h1>
+            {/* <p className="welcomeEyebrow">Selamat Datang di</p> */}
+            <h1 className="welcomeHeadline"> BCA AI </h1>
+            <h1 className="welcomeHeadline">Uniform Studio</h1>
             <p className="welcomeLocation">Galeri BCA Sentul</p>
           </div>
           <button
@@ -869,7 +872,7 @@ export default function App() {
               disabled={costumesLoading || !genderAvailability.male}
             >
               <span className="genderBadge maleBadge">
-                <img className="genderBadgeIcon" src={manIcon} alt="Male" />
+                <img className="genderBadgeIcon" src={manIcon} alt="Pria" />
               </span>
               <span className="genderChoiceLabel">Pria</span>
               {!costumesLoading && !genderAvailability.male ? (
@@ -885,7 +888,7 @@ export default function App() {
               disabled={costumesLoading || !genderAvailability.female}
             >
               <span className="genderBadge femaleBadge">
-                <img className="genderBadgeIcon" src={womanIcon} alt="Female" />
+                <img className="genderBadgeIcon" src={womanIcon} alt="Wanita" />
               </span>
               <span className="genderChoiceLabel">Wanita</span>
               {!costumesLoading && !genderAvailability.female ? (
@@ -938,12 +941,6 @@ export default function App() {
             Menampilkan {visibleCostumes.length} dari {costumeOptions.length} seragam
             untuk gender {selectedGenderLabel || "-"}.
           </div>
-
-          {captureFilename ? (
-            <div className="costumeCaptureNotice">
-              Foto sudah tersimpan. Kamu bisa kembali bila ingin ambil ulang.
-            </div>
-          ) : null}
 
           {costumesLoading ? (
             <div className="costumeEmpty">Loading costumes...</div>
@@ -1003,7 +1000,7 @@ export default function App() {
             </div>
           ) : (
             <div className="costumeEmpty">
-              Belum ada costume aktif untuk gender {formData.gender || "-"}.
+              Belum ada costume aktif untuk gender {selectedGenderLabel || "-"}.
             </div>
           )}
 
@@ -1065,11 +1062,10 @@ export default function App() {
                     />
                   </svg>
                 </div>
-                <div className="processSuccessEyebrow">Siap Diproses</div>
+                <div className="processSuccessEyebrow"></div>
                 <div className="processSuccessTitle">Proses berhasil dimulai</div>
                 <div className="processSuccessSub">
-                  Foto dan seragam pilihan Anda sudah dikirim ke sistem. Hasil akan
-                  segera diproses.
+                  Foto dan seragam pilihan Anda sudah dikirim ke sistem.
                 </div>
                 <div className="processSuccessCountdown">
                   Kembali ke halaman awal dalam {processSuccessCountdown || 1} detik
