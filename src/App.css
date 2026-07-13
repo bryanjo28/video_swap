@@ -105,9 +105,10 @@
 }
 
 .welcomeBrand {
-  position: fixed;
-  top: max(34px, calc(env(safe-area-inset-top) + 12px));
-  z-index: 4;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
   pointer-events: none;
 }
 
@@ -130,9 +131,16 @@
   height: 40px;
 }
 
+.welcomeHero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
 .welcomeAvatarWrap {
   margin-top: 0;
-  margin-bottom: 14px;
+  margin-bottom: 0;
 }
 
 .welcomeAvatarRing {
@@ -161,7 +169,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   max-width: 420px;
   font-family: var(--font-sans);
   text-shadow: 0 10px 26px rgba(2, 20, 52, 0.42);
@@ -183,7 +191,7 @@
 .welcomeHeadline {
   font-size: clamp(36px, 8.2vw, 56px);
   font-weight: 800;
-  line-height: 1.08;
+  line-height: 1.14;
   letter-spacing: -0.03em;
   color: #ffffff;
 }
@@ -899,8 +907,11 @@
     animation: none !important;
   }
   .costumeItem,
-  .costumeArrow {
+  .costumeArrow,
+  .processingLiveDot,
+  .processingProgressShimmer {
     transition: none !important;
+    animation: none !important;
   }
 }
 
@@ -1299,6 +1310,219 @@
   flex-wrap: wrap;
 }
 
+.processSuccessOverlay {
+  background: rgba(7, 29, 74, 0.44);
+  backdrop-filter: blur(10px);
+}
+
+.processSuccessCard {
+  width: min(480px, 92vw);
+  padding: 28px 24px 24px;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  text-align: center;
+  color: #fff;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top, rgba(146, 226, 255, 0.26), transparent 42%),
+    linear-gradient(180deg, rgba(8, 90, 164, 0.96), rgba(4, 63, 125, 0.96));
+  border: 1px solid rgba(178, 234, 255, 0.42);
+  box-shadow:
+    0 28px 70px rgba(1, 28, 74, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  animation: processSuccessIn 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.processSuccessIconWrap {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.12) 60%, rgba(255, 255, 255, 0.08)),
+    linear-gradient(180deg, rgba(110, 228, 190, 0.3), rgba(77, 180, 152, 0.14));
+  box-shadow:
+    0 0 0 12px rgba(167, 236, 255, 0.12),
+    0 0 36px rgba(132, 225, 255, 0.34);
+}
+
+.processSuccessPulse {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(196, 248, 233, 0.3);
+  z-index: 0;
+}
+
+.processSuccessPulseOuter {
+  animation: processSuccessPulse 2.2s ease-out infinite;
+}
+
+.processSuccessPulseInner {
+  inset: 10px;
+  opacity: 0.8;
+  animation: processSuccessPulse 2.2s ease-out 0.3s infinite;
+}
+
+.processSuccessIconSvg {
+  position: relative;
+  z-index: 1;
+  width: 74px;
+  height: 74px;
+  overflow: visible;
+  filter: drop-shadow(0 10px 22px rgba(18, 104, 74, 0.26));
+}
+
+.processSuccessRing,
+.processSuccessCheck {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.processSuccessRing {
+  stroke: rgba(207, 255, 237, 0.96);
+  stroke-width: 8;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: processSuccessDrawRing 0.72s cubic-bezier(0.2, 0.8, 0.2, 1) 0.05s forwards;
+}
+
+.processSuccessCheck {
+  stroke: #bff6e3;
+  stroke-width: 9;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: processSuccessDrawCheck 0.44s cubic-bezier(0.25, 0.9, 0.2, 1) 0.52s forwards;
+}
+
+.processSuccessEyebrow {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(223, 247, 255, 0.82);
+}
+
+.processSuccessTitle {
+  font-size: clamp(28px, 6vw, 38px);
+  font-weight: 800;
+  line-height: 1.08;
+  text-shadow: 0 8px 22px rgba(2, 18, 52, 0.3);
+}
+
+.processSuccessSub {
+  max-width: 360px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(231, 247, 255, 0.9);
+}
+
+.processSuccessCountdown {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(211, 241, 255, 0.84);
+}
+
+.processSuccessButton {
+  border: 1px solid rgba(186, 236, 255, 0.48);
+  border-radius: 999px;
+  padding: 14px 24px;
+  min-width: 220px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  background:
+    linear-gradient(180deg, rgba(127, 206, 255, 0.38) 0%, rgba(89, 182, 255, 0.25) 100%),
+    linear-gradient(120deg, rgba(2, 113, 202, 0.92), rgba(74, 170, 255, 0.8));
+  box-shadow:
+    0 14px 28px rgba(0, 47, 100, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.2s ease;
+}
+
+.processSuccessButton:hover {
+  filter: brightness(1.05);
+}
+
+.processSuccessButton:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+@keyframes processSuccessIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes processSuccessDrawRing {
+  from {
+    stroke-dashoffset: 100;
+    opacity: 0.65;
+    transform: rotate(-24deg);
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes processSuccessDrawCheck {
+  from {
+    stroke-dashoffset: 100;
+    opacity: 0.2;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes processSuccessPulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.22);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmerSweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes dotPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
 .processingPage {
   position: fixed;
   inset: 0;
@@ -1319,7 +1543,7 @@
   border-radius: 24px;
   padding: 26px 24px;
   display: grid;
-  gap: 14px;
+  gap: 10px;
   text-align: center;
   animation: cardIn 0.55s ease-out;
 }
@@ -1327,8 +1551,33 @@
 .processingHeader {
   display: grid;
   justify-items: center;
-  gap: 4px;
-  margin-bottom: 2px;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.processingLiveStatus {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: -6px;
+  margin-bottom: 0;
+}
+
+.processingLiveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(203, 248, 255, 0.95);
+  box-shadow: 0 0 12px rgba(123, 231, 255, 0.5);
+  animation: dotPulse 1s ease-in-out infinite;
+}
+
+.processingLiveDot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.processingLiveDot:nth-child(3) {
+  animation-delay: 0.3s;
 }
 
 .processingStepLabel {
@@ -1350,10 +1599,11 @@
 
 .processingProgressWrap {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .processingProgressTrack {
+  position: relative;
   width: 100%;
   height: 12px;
   border-radius: 999px;
@@ -1368,6 +1618,22 @@
   background: linear-gradient(90deg, #7be7ff 0%, #b8f5ff 100%);
   box-shadow: 0 0 14px rgba(123, 231, 255, 0.55);
   transition: width 0.35s ease;
+}
+
+.processingProgressShimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.12) 46%,
+    rgba(255, 255, 255, 0.48) 50%,
+    rgba(255, 255, 255, 0.12) 54%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 220% 100%;
+  animation: shimmerSweep 1.35s linear infinite;
+  pointer-events: none;
 }
 
 .processingProgressText {
@@ -1399,7 +1665,7 @@
   border-radius: 22px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.06);
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 /* PREVIEW PAGE */
@@ -1409,8 +1675,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  padding: 28px 16px 24px;
+  gap: 6px;
+  padding: 14px 16px 18px;
   font-family: var(--font-sans);
   color: #ffffff;
   background:
@@ -1418,6 +1684,17 @@
     radial-gradient(circle at 12% 18%, rgba(146, 207, 255, 0.35), transparent 36%),
     linear-gradient(180deg, #01579d 0%, #0160ae 52%, #0168ba 100%);
   overflow: hidden;
+}
+
+.previewPageResult {
+  justify-content: flex-start;
+}
+
+.previewPageDone {
+  justify-content: center;
+  gap: 10px;
+  padding-top: 18px;
+  padding-bottom: 18px;
 }
 
 .previewPage::before {
@@ -1448,13 +1725,13 @@
   text-shadow: 0 8px 22px rgba(2, 18, 52, 0.45);
   text-align: center;
   line-height: 1.08;
-  margin-top: 6px;
+  margin-top: 0;
 }
 
 .previewSub {
   font-size: clamp(14px, 2.4vw, 18px);
   color: rgba(214, 240, 255, 0.9);
-  margin-top: -4px;
+  margin-top: -2px;
   max-width: min(88vw, 560px);
   text-align: center;
 }
@@ -1464,7 +1741,20 @@
   flex: 1;
   display: grid;
   place-items: center;
-  padding: 4px 0;
+  padding: 0 0 4px;
+}
+
+.previewPageDone .previewFrameWrap {
+  flex: 0 1 auto;
+  width: 100%;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.previewPageDone .previewFrame {
+  width: min(520px, 92vw);
+  height: min(70dvh, calc(92vw * 16 / 9));
+  max-height: 980px;
 }
 
 .previewFrame {
@@ -1972,12 +2262,8 @@
   .welcomeCard {
     min-height: calc(100dvh - 40px);
     justify-content: center;
-    padding: 92px 14px 56px;
+    padding: 72px 14px 56px;
     gap: 18px;
-  }
-
-  .welcomeBrand {
-    top: max(40px, calc(env(safe-area-inset-top) + 16px));
   }
 
   .captureBrand {
@@ -2130,10 +2416,6 @@
     padding-right: clamp(16px, 4vw, 28px);
   }
 
-  .welcomeBrand {
-    top: max(34px, calc(env(safe-area-inset-top) + 14px));
-  }
-
   .captureBrand {
     top: max(10px, calc(env(safe-area-inset-top) + 2px));
   }
@@ -2141,12 +2423,16 @@
   .welcomeCard {
     width: min(460px, 100%);
     min-height: calc(100dvh - 48px);
-    padding: clamp(96px, 12dvh, 132px) 18px clamp(56px, 8dvh, 88px);
-    gap: clamp(18px, 2.6dvh, 26px);
+    padding: clamp(72px, 8dvh, 108px) 18px clamp(56px, 8dvh, 88px);
+    gap: clamp(20px, 2.8dvh, 30px);
+  }
+
+  .welcomeHero {
+    gap: clamp(16px, 2dvh, 24px);
   }
 
   .welcomeAvatarWrap {
-    margin-bottom: clamp(10px, 1.8dvh, 18px);
+    margin-bottom: clamp(6px, 1.2dvh, 12px);
   }
 
   .welcomeButton {
@@ -2166,7 +2452,7 @@
   .capturePage,
   .previewPage,
   .displayPage {
-    padding-top: clamp(76px, 8dvh, 110px);
+    padding-top: clamp(62px, 6dvh, 90px);
     padding-bottom: clamp(20px, 4dvh, 36px);
   }
 
@@ -2176,7 +2462,7 @@
 
   .previewFrame {
     width: min(90vw, 440px);
-    height: min(68dvh, calc(90vw * 16 / 9));
+    height: min(72dvh, calc(90vw * 16 / 9));
   }
 
   .displayMeta {
@@ -2184,14 +2470,272 @@
   }
 }
 
-@media (orientation: portrait) and (min-height: 1200px) {
-  .welcomeCard {
-    padding-top: 140px;
-    padding-bottom: 96px;
+@media (orientation: portrait) and (min-width: 900px) {
+  .welcomeBrandLogo {
+    height: 58px;
   }
 
-  .welcomeBrand {
-    top: max(48px, calc(env(safe-area-inset-top) + 24px));
+  .welcomeCard {
+    width: min(640px, 86vw);
+    justify-content: center;
+    padding: 96px 34px 110px;
+    gap: 28px;
+  }
+
+  .welcomeHero {
+    gap: 20px;
+  }
+
+  .welcomeAvatarRing {
+    width: 184px;
+    height: 184px;
+    padding: 11px;
+  }
+
+  .welcomeTitle {
+    max-width: 560px;
+    gap: 18px;
+  }
+
+  .welcomeEyebrow {
+    font-size: 34px;
+    line-height: 1.3;
+  }
+
+  .welcomeHeadline {
+    font-size: 68px;
+    line-height: 1.18;
+  }
+
+  .welcomeLocation {
+    font-size: 38px;
+    line-height: 1.28;
+  }
+
+  .welcomeButton {
+    min-width: 360px;
+    padding: 20px 36px;
+    font-size: 30px;
+    margin-top: 24px;
+  }
+
+  .stageCard {
+    width: min(700px, 86vw);
+    border-radius: 36px;
+    padding: 38px 34px 32px;
+    gap: 24px;
+  }
+
+  .concernCard {
+    width: min(720px, 86vw);
+    padding: 42px 34px 32px;
+    gap: 18px;
+  }
+
+  .concernAvatar {
+    margin-top: -72px;
+  }
+
+  .concernAvatarRing {
+    width: 96px;
+    height: 96px;
+    padding: 7px;
+  }
+
+  .stageStep,
+  .stageStep2 {
+    font-size: 16px;
+    letter-spacing: 0.9px;
+  }
+
+  .stageTitle {
+    font-size: 44px;
+    line-height: 1.16;
+  }
+
+  .stageSub,
+  .stageInfo,
+  .stageError {
+    font-size: 20px;
+    line-height: 1.5;
+  }
+
+  .consentCard {
+    padding: 24px 24px;
+    border-radius: 24px;
+  }
+
+  .consentCopy {
+    font-size: 18px;
+    line-height: 1.72;
+  }
+
+  .stageActions,
+  .concernActions {
+    margin-top: 6px;
+  }
+
+  .stagePrimaryButton,
+  .stageGhostButton {
+    min-width: 200px;
+    border-radius: 20px;
+    padding: 18px 26px;
+    font-size: 22px;
+  }
+
+  .genderChoiceGrid {
+    gap: 20px;
+  }
+
+  .genderChoiceCard {
+    min-height: 248px;
+    border-radius: 28px;
+    gap: 16px;
+    padding: 26px 16px;
+  }
+
+  .genderBadge {
+    width: 118px;
+    height: 118px;
+  }
+
+  .genderBadgeIcon {
+    width: 78px;
+    height: 78px;
+  }
+
+  .genderChoiceLabel {
+    font-size: 30px;
+  }
+
+  .genderChoiceHint {
+    font-size: 16px;
+  }
+
+  .costumePage {
+    padding-top: 118px;
+    padding-bottom: 34px;
+  }
+
+  .costumeCard {
+    width: min(760px, 88vw);
+    border-radius: 34px;
+    padding: 34px 30px 28px;
+    gap: 20px;
+  }
+
+  .costumeStep {
+    font-size: 16px;
+    letter-spacing: 0.8px;
+  }
+
+  .costumeTitle {
+    font-size: 48px;
+    line-height: 1.14;
+  }
+
+  .costumeMeta,
+  .costumeCaptureNotice,
+  .costumeEmpty,
+  .costumeInlineError,
+  .costumePager {
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  .costumeCaptureNotice,
+  .costumeEmpty {
+    padding: 18px 20px;
+    border-radius: 20px;
+  }
+
+  .costumeSelector {
+    grid-template-columns: 58px 1fr 58px;
+    gap: 16px;
+  }
+
+  .costumeArrow {
+    width: 58px;
+    height: 58px;
+    font-size: 28px;
+  }
+
+  .costumeGrid {
+    gap: 18px;
+  }
+
+  .costumeItem {
+    border-radius: 22px;
+    padding: 12px;
+  }
+
+  .costumeImage {
+    height: 238px;
+    border-radius: 16px;
+  }
+
+  .costumeName {
+    margin-top: 12px;
+    font-size: 22px;
+    line-height: 1.35;
+  }
+
+  .costumeActionsRow {
+    gap: 16px;
+  }
+
+  .costumeBack,
+  .costumeNext {
+    min-width: 190px;
+    padding: 16px 24px;
+    font-size: 20px;
+  }
+
+  .processSuccessCard {
+    width: min(620px, 84vw);
+    padding: 38px 34px 32px;
+    gap: 18px;
+    border-radius: 34px;
+  }
+
+  .processSuccessIconWrap {
+    width: 118px;
+    height: 118px;
+  }
+
+  .processSuccessIconSvg {
+    width: 92px;
+    height: 92px;
+  }
+
+  .processSuccessEyebrow {
+    font-size: 16px;
+  }
+
+  .processSuccessTitle {
+    font-size: 48px;
+  }
+
+  .processSuccessSub {
+    max-width: 460px;
+    font-size: 20px;
+  }
+
+  .processSuccessCountdown {
+    font-size: 17px;
+  }
+
+  .processSuccessButton {
+    min-width: 280px;
+    padding: 18px 30px;
+    font-size: 21px;
+  }
+}
+
+@media (orientation: portrait) and (min-height: 1200px) {
+  .welcomeCard {
+    padding-top: 96px;
+    padding-bottom: 96px;
   }
 
   .captureBrand {
@@ -2207,38 +2751,80 @@
 
   .previewHeader {
     font-size: clamp(40px, 5vw, 56px);
-    margin-top: 0;
+    margin-top: -6px;
   }
 
   .previewSub {
     font-size: 18px;
+    margin-top: -6px;
     max-width: min(82vw, 620px);
   }
 
   .previewFrame {
     width: min(88vw, 600px);
-    height: min(72dvh, calc(88vw * 16 / 9));
+    height: min(70dvh, calc(88vw * 16 / 9));
     max-height: 1060px;
   }
 
+  .previewPage {
+    gap: 4px;
+    padding-top: 20px;
+    padding-bottom: 14px;
+  }
+
+  .previewPageDone {
+    gap: 12px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .previewHeader {
+    margin-top: 4px;
+  }
+
+  .previewFrameWrap {
+    padding-top: 8px;
+  }
+
+  .previewPageDone .previewFrameWrap {
+    flex: 0 1 auto;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .previewPageDone .previewFrame {
+    width: min(520px, 92vw);
+    height: min(70dvh, calc(92vw * 16 / 9));
+    max-height: 920px;
+  }
+
   .processingCard {
-    width: min(620px, 88vw);
-    padding: 32px 28px;
+    width: min(760px, 82vw);
+    padding: 44px 40px 38px;
+    gap: 12px;
   }
 
   .processingTitle {
-    font-size: clamp(36px, 4.8vw, 52px);
+    font-size: clamp(40px, 4.4vw, 60px);
   }
 
   .processingStepLabel,
   .processingSub,
   .processingProgressText {
-    font-size: 18px;
+    font-size: 19px;
   }
 
   .processingPreviewVideo {
-    width: min(100%, 420px);
-    max-height: min(62dvh, 760px);
+    width: min(100%, 460px);
+    max-height: min(64dvh, 820px);
+  }
+
+  .processingHeader {
+    gap: 6px;
+  }
+
+  .processingLiveStatus {
+    margin-top: -2px;
   }
 }
 

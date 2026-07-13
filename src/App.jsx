@@ -46,6 +46,8 @@ export default function App() {
   const faceOvalRef = useRef(null);
   const loadCostumesRef = useRef(null);
   const loadJobLockStateRef = useRef(null);
+  const processSuccessTimeoutRef = useRef(null);
+  const processSuccessIntervalRef = useRef(null);
 
   const [page, setPage] = useState("welcome");
   const [formData, setFormData] = useState({
@@ -73,6 +75,8 @@ export default function App() {
   const [allCostumes, setAllCostumes] = useState([]);
   const [costumesLoading, setCostumesLoading] = useState(false);
   const [costumesError, setCostumesError] = useState("");
+  const [showProcessSuccessModal, setShowProcessSuccessModal] = useState(false);
+  const [processSuccessCountdown, setProcessSuccessCountdown] = useState(0);
 
   const [lastShot, setLastShot] = useState(null);
   const [captureFilename, setCaptureFilename] = useState("");
@@ -84,7 +88,7 @@ export default function App() {
 
   const [, setJobId] = useState("");
   const [, setJobStatus] = useState("");
-  const [progress, setProgress] = useState(0);
+  const [, setProgress] = useState(0);
   const [, setSpeedFps] = useState(0);
   const [, setJobMessage] = useState("");
   const [, setJobStage] = useState("queued");
@@ -173,7 +177,42 @@ export default function App() {
     setPreviewUrl("");
   };
 
+  const clearProcessSuccessTimers = () => {
+    if (processSuccessTimeoutRef.current) {
+      clearTimeout(processSuccessTimeoutRef.current);
+      processSuccessTimeoutRef.current = null;
+    }
+    if (processSuccessIntervalRef.current) {
+      clearInterval(processSuccessIntervalRef.current);
+      processSuccessIntervalRef.current = null;
+    }
+  };
+
+  const showProcessSuccessState = () => {
+    clearProcessSuccessTimers();
+    setShowProcessSuccessModal(true);
+    setProcessSuccessCountdown(6);
+
+    processSuccessIntervalRef.current = setInterval(() => {
+      setProcessSuccessCountdown((current) => {
+        if (current <= 1) {
+          clearProcessSuccessTimers();
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+
+    processSuccessTimeoutRef.current = setTimeout(() => {
+      clearProcessSuccessTimers();
+      resetFlow();
+    }, 6000);
+  };
+
   const resetFlow = () => {
+    clearProcessSuccessTimers();
+    setShowProcessSuccessModal(false);
+    setProcessSuccessCountdown(0);
     setPage("welcome");
     setFormData({ gender: "" });
     setGenderTouched(false);
@@ -197,6 +236,8 @@ export default function App() {
     setCaptureFilename("");
     resetJobState();
   };
+
+  useEffect(() => () => clearProcessSuccessTimers(), []);
 
   const loadCostumes = async () => {
     try {
@@ -677,7 +718,7 @@ export default function App() {
         await startSwapJob(filename, costumeId);
       }
 
-      resetFlow();
+      showProcessSuccessState();
     } catch (e) {
       console.error(e);
       const message = e?.message || String(e);
@@ -703,21 +744,23 @@ export default function App() {
         <div className="welcomeStars" />
         <div className="welcomeGlow welcomeGlowA" />
         <div className="welcomeGlow welcomeGlowB" />
-        <div className="welcomeBrand">
-          <img
-            className="welcomeBrandLogo"
-            src="/src/assets/BCA_white.png"
-            alt="BCA"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = logoBcaFallback;
-            }}
-          />
-        </div>
         <div className="welcomeCard">
-          <div className="welcomeAvatarWrap">
-            <div className="welcomeAvatarRing">
-              <img className="welcomeAvatar" src={aiFace} alt="AI assistant" />
+          <div className="welcomeHero">
+            <div className="welcomeBrand">
+              <img
+                className="welcomeBrandLogo"
+                src="/src/assets/BCA_white.png"
+                alt="BCA"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = logoBcaFallback;
+                }}
+              />
+            </div>
+            <div className="welcomeAvatarWrap">
+              <div className="welcomeAvatarRing">
+                <img className="welcomeAvatar" src={aiFace} alt="AI assistant" />
+              </div>
             </div>
           </div>
           <div className="welcomeTitle">
@@ -828,7 +871,7 @@ export default function App() {
               <span className="genderBadge maleBadge">
                 <img className="genderBadgeIcon" src={manIcon} alt="Male" />
               </span>
-              <span className="genderChoiceLabel">Male</span>
+              <span className="genderChoiceLabel">Pria</span>
               {!costumesLoading && !genderAvailability.male ? (
                 <span className="genderChoiceHint">Costume belum tersedia</span>
               ) : null}
@@ -844,7 +887,7 @@ export default function App() {
               <span className="genderBadge femaleBadge">
                 <img className="genderBadgeIcon" src={womanIcon} alt="Female" />
               </span>
-              <span className="genderChoiceLabel">Female</span>
+              <span className="genderChoiceLabel">Wanita</span>
               {!costumesLoading && !genderAvailability.female ? (
                 <span className="genderChoiceHint">Costume belum tersedia</span>
               ) : null}
@@ -985,11 +1028,62 @@ export default function App() {
               type="button"
               className="costumeNext"
               onClick={handleStartProcessing}
-              disabled={!selectedCostumeId || !captureFilename || isJobLocked}
+              disabled={
+                !selectedCostumeId ||
+                !captureFilename ||
+                isJobLocked ||
+                showProcessSuccessModal
+              }
             >
               Lanjutkan Proses
             </button>
           </div>
+
+          {showProcessSuccessModal ? (
+            <div className="modalOverlay processSuccessOverlay">
+              <div className="processSuccessCard">
+                <div className="processSuccessIconWrap" aria-hidden="true">
+                  <span className="processSuccessPulse processSuccessPulseOuter" />
+                  <span className="processSuccessPulse processSuccessPulseInner" />
+                  <svg
+                    className="processSuccessIconSvg"
+                    viewBox="0 0 120 120"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <circle
+                      className="processSuccessRing"
+                      cx="60"
+                      cy="60"
+                      r="44"
+                      pathLength="100"
+                    />
+                    <path
+                      className="processSuccessCheck"
+                      d="M39 61.5L53 75.5L83 46"
+                      pathLength="100"
+                    />
+                  </svg>
+                </div>
+                <div className="processSuccessEyebrow">Siap Diproses</div>
+                <div className="processSuccessTitle">Proses berhasil dimulai</div>
+                <div className="processSuccessSub">
+                  Foto dan seragam pilihan Anda sudah dikirim ke sistem. Hasil akan
+                  segera diproses.
+                </div>
+                <div className="processSuccessCountdown">
+                  Kembali ke halaman awal dalam {processSuccessCountdown || 1} detik
+                </div>
+                <button
+                  type="button"
+                  className="processSuccessButton"
+                  onClick={resetFlow}
+                >
+                  Kembali Sekarang
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     );

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import logoBcaFallback from "./assets/BCA_white.png";
 import processingVideo from "./assets/media1.mp4";
 
 const API_BASE_URL = "http://localhost:8000";
@@ -105,7 +104,7 @@ export default function DisplayPage() {
   const isActive = ACTIVE_STATUSES.has(displayState.status);
   const isDone = displayState.status === "done" && displayState.previewUrl;
   const isError = displayState.status === "error";
-  const displayTitle = displayState.costumeName || "Preview";
+  const displayTitle = displayState.costumeName;
   const processingPreviewUrl = displayState.previewUrl || processingVideo;
   const stageKey = String(displayState.stage || displayState.status || "idle").toLowerCase();
   const processingProgress = Math.max(
@@ -283,7 +282,7 @@ export default function DisplayPage() {
 
   if (requestError) {
     return (
-      <div className="previewPage">
+      <div className="previewPage previewPageResult">
         {/* <div className="welcomeBrandDisplay">
           <img
             className="welcomeBrandLogo"
@@ -308,7 +307,7 @@ export default function DisplayPage() {
 
   if (isDone) {
     return (
-      <div className="previewPage">
+      <div className="previewPage previewPageDone">
         {/* <div className="welcomeBrandDisplay">
           <img
             className="welcomeBrandLogo"
@@ -358,6 +357,11 @@ export default function DisplayPage() {
           <div className="processingHeader">
             <div className="processingTitle">{displayTitle}</div>
           </div>
+          <div className="processingLiveStatus" aria-hidden="true">
+            <span className="processingLiveDot" />
+            <span className="processingLiveDot" />
+            <span className="processingLiveDot" />
+          </div>
           <video
             className="processingPreviewVideo"
             src={processingPreviewUrl}
@@ -380,6 +384,7 @@ export default function DisplayPage() {
                 className="processingProgressFill"
                 style={{ width: `${processingProgress}%` }}
               />
+              <div className="processingProgressShimmer" />
             </div>
             <div className="processingProgressText">{processingProgress}%</div>
           </div>
@@ -390,7 +395,7 @@ export default function DisplayPage() {
 
   if (isError) {
     return (
-      <div className="previewPage">
+      <div className="previewPage previewPageResult">
         {/* <div className="welcomeBrand">
           <img
             className="welcomeBrandLogo"
@@ -416,7 +421,7 @@ export default function DisplayPage() {
   }
 
   return (
-    <div className="previewPage">
+    <div className="previewPage previewPageResult">
       {/* <div className="welcomeBrandDisplay">
         <img
           className="welcomeBrandLogo"
