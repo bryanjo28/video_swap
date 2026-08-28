@@ -1368,6 +1368,7 @@
 .modalOverlay {
   position: fixed;
   inset: 0;
+  z-index: 1000;
   background: rgba(40, 56, 110, 0.35);
   display: grid;
   place-items: center;
@@ -3042,12 +3043,6 @@
   .processingPreviewVideo {
     width: min(100%, 390px);
     max-height: min(58vh, 700px);
-  }
-
-  .modalOverlay {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
   }
 
   .displayShell {

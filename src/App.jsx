@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import aiFace from "./assets/ai_face.png";
 import logoBcaFallback from "./assets/BCA_white.png";
 import manIcon from "./assets/man_icon.png";
@@ -768,7 +769,7 @@ export default function App() {
           <div className="welcomeTitle">
             {/* <p className="welcomeEyebrow">Selamat Datang di</p> */}
             <h1 className="welcomeHeadline"> BCA AI </h1>
-            <h1 className="welcomeHeadline">Uniform Studio</h1>
+            <h1 className="welcomeHeadline">Video Generator</h1>
             <p className="welcomeLocation">Galeri BCA Sentul</p>
           </div>
           <button
@@ -1037,48 +1038,51 @@ export default function App() {
           </div>
 
           {showProcessSuccessModal ? (
-            <div className="modalOverlay processSuccessOverlay">
-              <div className="processSuccessCard">
-                <div className="processSuccessIconWrap" aria-hidden="true">
-                  <span className="processSuccessPulse processSuccessPulseOuter" />
-                  <span className="processSuccessPulse processSuccessPulseInner" />
-                  <svg
-                    className="processSuccessIconSvg"
-                    viewBox="0 0 120 120"
-                    fill="none"
-                    aria-hidden="true"
+            createPortal(
+              <div className="modalOverlay processSuccessOverlay">
+                <div className="processSuccessCard">
+                  <div className="processSuccessIconWrap" aria-hidden="true">
+                    <span className="processSuccessPulse processSuccessPulseOuter" />
+                    <span className="processSuccessPulse processSuccessPulseInner" />
+                    <svg
+                      className="processSuccessIconSvg"
+                      viewBox="0 0 120 120"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <circle
+                        className="processSuccessRing"
+                        cx="60"
+                        cy="60"
+                        r="44"
+                        pathLength="100"
+                      />
+                      <path
+                        className="processSuccessCheck"
+                        d="M39 61.5L53 75.5L83 46"
+                        pathLength="100"
+                      />
+                    </svg>
+                  </div>
+                  <div className="processSuccessEyebrow"></div>
+                  <div className="processSuccessTitle">Proses berhasil dimulai</div>
+                  <div className="processSuccessSub">
+                    Foto dan seragam pilihan Anda sudah dikirim ke sistem.
+                  </div>
+                  <div className="processSuccessCountdown">
+                    Kembali ke halaman awal dalam {processSuccessCountdown || 1} detik
+                  </div>
+                  <button
+                    type="button"
+                    className="processSuccessButton"
+                    onClick={resetFlow}
                   >
-                    <circle
-                      className="processSuccessRing"
-                      cx="60"
-                      cy="60"
-                      r="44"
-                      pathLength="100"
-                    />
-                    <path
-                      className="processSuccessCheck"
-                      d="M39 61.5L53 75.5L83 46"
-                      pathLength="100"
-                    />
-                  </svg>
+                    Kembali Sekarang
+                  </button>
                 </div>
-                <div className="processSuccessEyebrow"></div>
-                <div className="processSuccessTitle">Proses berhasil dimulai</div>
-                <div className="processSuccessSub">
-                  Foto dan seragam pilihan Anda sudah dikirim ke sistem.
-                </div>
-                <div className="processSuccessCountdown">
-                  Kembali ke halaman awal dalam {processSuccessCountdown || 1} detik
-                </div>
-                <button
-                  type="button"
-                  className="processSuccessButton"
-                  onClick={resetFlow}
-                >
-                  Kembali Sekarang
-                </button>
-              </div>
-            </div>
+              </div>,
+              document.body
+            )
           ) : null}
         </div>
       </div>
