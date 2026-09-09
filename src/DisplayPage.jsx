@@ -41,17 +41,6 @@ const toDisplayName = (value) =>
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
-const getPreviewLoadingUrl = (payload) =>
-  toMediaUrl(
-    payload?.preview_url ||
-      payload?.video_url ||
-      payload?.url ||
-      payload?.file_path ||
-      payload?.path ||
-      payload?.video_path ||
-      ""
-  );
-
 const normalizeStatusPayload = (payload) => {
   const status = String(payload?.status || "idle").toLowerCase();
   const costumeName = toDisplayName(payload?.costume?.name || "");
@@ -96,7 +85,6 @@ export default function DisplayPage() {
     costumeName: "",
   });
   const [requestError, setRequestError] = useState("");
-  const [idlePreviewUrl, setIdlePreviewUrl] = useState("");
   const lastJobIdRef = useRef("");
   const loadLatestDisplayRef = useRef(null);
   const consumeTimerRef = useRef(null);
@@ -169,34 +157,6 @@ export default function DisplayPage() {
     return () => {
       isMounted = false;
       window.clearInterval(timer);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (window.location.pathname !== "/display") return;
-    let isMounted = true;
-
-    const loadIdlePreview = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/preview-loading/male`, {
-          cache: "no-store",
-        });
-        const json = await response.json().catch(() => ({}));
-        if (!response.ok || json?.ok === false) {
-          return;
-        }
-
-        const nextUrl = getPreviewLoadingUrl(json);
-        if (!isMounted || !nextUrl) return;
-        setIdlePreviewUrl(nextUrl);
-      } catch (error) {
-        console.error("[display] failed to load idle preview", error);
-      }
-    };
-
-    loadIdlePreview();
-    return () => {
-      isMounted = false;
     };
   }, []);
 
@@ -437,10 +397,11 @@ export default function DisplayPage() {
       {/* <div className="previewSub">Menunggu hasil terbaru.</div> */}
       <div className="previewFrameWrap">
         <div className="previewFrame">
-          {idlePreviewUrl ? (
+          {displayState.previewUrl ? (
             <video
+              key={displayState.previewUrl}
               className="previewVideo"
-              src={idlePreviewUrl}
+              src={displayState.previewUrl}
               autoPlay
               muted
               playsInline

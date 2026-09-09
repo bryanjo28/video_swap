@@ -767,9 +767,9 @@ export default function App() {
             </div>
           </div>
           <div className="welcomeTitle">
-            {/* <p className="welcomeEyebrow">Selamat Datang di</p> */}
-            <h1 className="welcomeHeadline"> BCA AI </h1>
-            <h1 className="welcomeHeadline">Video Generator</h1>
+            <p className="welcomeEyebrow">Selamat Datang di</p>
+            <h1 className="welcomeHeadline"> Seragam BCA - AI Video Generator </h1>
+            {/* <h1 className="welcomeHeadline">Video Generator</h1> */}
             <p className="welcomeLocation">Galeri BCA Sentul</p>
           </div>
           <button
