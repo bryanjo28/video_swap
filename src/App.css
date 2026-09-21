@@ -1900,7 +1900,7 @@
   max-height: 920px;
   /* background: #0c1e4a; */
   border-radius: 24px;
-  border: 6px solid rgba(255, 255, 255, 0.9);
+  border: 3px solid rgba(255, 255, 255, 0.9);
   box-shadow:
     0 16px 50px rgba(66, 90, 170, 0.22),
     0 6px 18px rgba(66, 90, 170, 0.12);

@@ -938,10 +938,10 @@ export default function App() {
         <div className="costumeCard">
           <div className="costumeStep">Step 3</div>
           <h2 className="costumeTitle">Pilih Seragammu</h2>
-          <div className="costumeMeta">
+          {/* <div className="costumeMeta">
             Menampilkan {visibleCostumes.length} dari {costumeOptions.length} seragam
             untuk gender {selectedGenderLabel || "-"}.
-          </div>
+          </div> */}
 
           {costumesLoading ? (
             <div className="costumeEmpty">Loading costumes...</div>
