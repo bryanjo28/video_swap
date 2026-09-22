@@ -3090,6 +3090,11 @@
     width: min(100%, 460px, calc(64dvh * 9 / 16));
     max-height: min(64dvh, 820px);
   }
+
+  .previewPageDone .previewFrame {
+    width: min(100%, 500px, calc(70dvh * 9 / 16));
+    max-height: min(70dvh, 920px);
+  }
 }
 
 @media (min-width: 1024px) and (orientation: landscape) {
