@@ -2935,6 +2935,8 @@
     height: auto;
     max-height: none;
     display: block;
+    border: none;
+    box-shadow: none;
   }
 
   .previewVideo {
