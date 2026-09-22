@@ -3104,3 +3104,57 @@
     max-height: min(58vh, 700px);
   }
 }
+
+/* Large portrait displays, such as 50-65 inch kiosk screens. */
+@media (orientation: portrait) and (min-width: 600px) and (min-height: 900px) {
+  .costumeCard {
+    width: min(88vw, 860px);
+  }
+
+  .costumeTitle {
+    font-size: 54px;
+  }
+
+  .costumeImage {
+    height: 280px;
+  }
+
+  .costumeName {
+    font-size: 24px;
+  }
+
+  .costumeArrow {
+    width: 64px;
+    height: 64px;
+    font-size: 30px;
+  }
+
+  .costumeBack,
+  .costumeNext {
+    min-width: 210px;
+    font-size: 22px;
+  }
+
+  .previewFrame,
+  .previewPageDone .previewFrame {
+    width: min(82vw, 800px, calc(78dvh * 9 / 16));
+    max-height: min(78dvh, 1422px);
+  }
+
+  .processingCard {
+    width: min(90vw, 880px);
+  }
+
+  .processingPreviewVideo {
+    width: min(100%, 800px, calc(78dvh * 9 / 16));
+    max-height: min(78dvh, 1422px);
+  }
+
+  .processingStepLabel {
+    font-size: 24px;
+  }
+
+  .processingSub {
+    font-size: 20px;
+  }
+}
