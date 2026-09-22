@@ -3063,3 +3063,39 @@
     width: min(100%, 940px);
   }
 }
+
+/* Preview/result video: use the same sizing concept as the loading video. */
+.previewFrame,
+.previewPageDone .previewFrame {
+  width: min(100%, 360px, calc(68dvh * 9 / 16));
+  height: auto;
+  aspect-ratio: 9 / 16;
+  max-height: min(68dvh, 640px);
+  display: block;
+  border: none;
+  border-radius: 22px;
+  box-shadow: none;
+}
+
+.previewVideo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (orientation: portrait) and (min-height: 1200px) {
+  .previewFrame,
+  .previewPageDone .previewFrame {
+    width: min(100%, 460px, calc(64dvh * 9 / 16));
+    max-height: min(64dvh, 820px);
+  }
+}
+
+@media (min-width: 1024px) and (orientation: landscape) {
+  .previewFrame,
+  .previewPageDone .previewFrame {
+    width: min(100%, 390px, calc(58vh * 9 / 16));
+    max-height: min(58vh, 700px);
+  }
+}
