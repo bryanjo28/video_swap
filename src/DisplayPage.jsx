@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import processingVideo from "./assets/media1.mp4";
+import {
+  restartResultVideo,
+  startResultVideo,
+} from "./resultVideoPlayback.js";
 
 const API_BASE_URL = "http://localhost:8000";
 const POLL_INTERVAL_MS = 1500;
@@ -290,7 +294,10 @@ export default function DisplayPage() {
               autoPlay
               muted
               playsInline
-              loop
+              onLoadedMetadata={(event) => startResultVideo(event.currentTarget)}
+              onEnded={(event) => {
+                restartResultVideo(event.currentTarget).catch(() => {});
+              }}
               controls={false}
             />
           </div>
@@ -405,7 +412,10 @@ export default function DisplayPage() {
               autoPlay
               muted
               playsInline
-              loop
+              onLoadedMetadata={(event) => startResultVideo(event.currentTarget)}
+              onEnded={(event) => {
+                restartResultVideo(event.currentTarget).catch(() => {});
+              }}
               controls={false}
             />
           ) : null}

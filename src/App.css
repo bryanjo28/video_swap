@@ -2929,10 +2929,18 @@
     padding-bottom: 8px;
   }
 
+  .previewFrame,
   .previewPageDone .previewFrame {
-    width: min(520px, 92vw);
-    height: min(70dvh, calc(92vw * 16 / 9));
-    max-height: 920px;
+    width: min(82vw, 460px);
+    height: auto;
+    max-height: none;
+    display: block;
+  }
+
+  .previewVideo {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 
   .processingCard {
