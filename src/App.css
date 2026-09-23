@@ -3158,3 +3158,12 @@
     font-size: 20px;
   }
 }
+
+/* Full HD portrait display: enlarge preview/result video only. */
+@media (orientation: portrait) and (min-width: 1000px) and (max-width: 1150px) and (min-height: 1800px) {
+  .previewFrame,
+  .previewPageDone .previewFrame {
+    width: min(94vw, 960px, calc(89dvh * 9 / 16));
+    max-height: min(89dvh, 1707px);
+  }
+}
