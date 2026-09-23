@@ -300,6 +300,7 @@ export default function DisplayPage() {
               }}
               controls={false}
             />
+            <div className="previewVideoTitle">{displayTitle}</div>
           </div>
         </div>
       </div>

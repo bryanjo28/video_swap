@@ -3084,6 +3084,20 @@
   object-fit: cover;
 }
 
+.previewVideoTitle {
+  position: absolute;
+  top: clamp(16px, 2.8vw, 32px);
+  right: clamp(16px, 2.8vw, 32px);
+  z-index: 2;
+  color: #fff;
+  font-size: clamp(20px, 3.7vw, 40px);
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: right;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+}
+
 @media (orientation: portrait) and (min-height: 1200px) {
   .previewFrame,
   .previewPageDone .previewFrame {
