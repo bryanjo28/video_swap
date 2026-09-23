@@ -283,7 +283,7 @@ export default function DisplayPage() {
             }}
           />
         </div> */}
-        <div className="previewHeader">{displayTitle}</div>
+        {/* <div className="previewHeader">{displayTitle}</div> */}
 
         <div className="previewFrameWrap">
           <div className="previewFrame">
@@ -388,7 +388,7 @@ export default function DisplayPage() {
   }
 
   return (
-    <div className="previewPage previewPageResult">
+    <div className="previewPage previewPageResult previewPageVideo">
       {/* <div className="welcomeBrandDisplay">
         <img
           className="welcomeBrandLogo"
@@ -400,7 +400,7 @@ export default function DisplayPage() {
           }}
         />
       </div> */}
-      <div className="previewHeader">{displayTitle}</div>
+      {/* <div className="previewHeader">{displayTitle}</div> */}
       {/* <div className="previewSub">Menunggu hasil terbaru.</div> */}
       <div className="previewFrameWrap">
         <div className="previewFrame">

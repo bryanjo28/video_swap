@@ -3136,13 +3136,34 @@
   }
 
   .previewHeader {
-    font-size: 68px;
+    font-size: 60px;
   }
 
   .previewFrame,
   .previewPageDone .previewFrame {
     width: min(94vw, 960px, calc(89dvh * 9 / 16));
     max-height: min(89dvh, 1707px);
+  }
+
+  .previewPageDone,
+  .previewPageVideo {
+    gap: 0;
+    padding: 0;
+  }
+
+  .previewPageDone .previewFrameWrap,
+  .previewPageVideo .previewFrameWrap {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+  }
+
+  .previewPageDone .previewFrame,
+  .previewPageVideo .previewFrame {
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
   }
 
   .processingCard {
