@@ -1419,6 +1419,45 @@
   box-shadow: 0 20px 60px rgba(66, 90, 170, 0.25);
 }
 
+.captureConfirmCard {
+  width: min(500px, 92vw);
+  max-height: calc(100dvh - 32px);
+  padding: 26px;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.captureConfirmCard .modalTitle {
+  font-size: 22px;
+}
+
+.captureConfirmCard .modalSub {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.captureConfirmCard .modalMeta,
+.captureConfirmCard .modalError {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.captureConfirmCard .modalPreview {
+  width: min(280px, 100%);
+  max-height: 50dvh;
+  object-fit: contain;
+}
+
+.captureConfirmCard .modalActions {
+  gap: 14px;
+}
+
+.captureConfirmCard .btn {
+  min-width: 140px;
+  padding: 14px 22px;
+  font-size: 16px;
+}
+
 .modalCardError {
   border: 1px solid rgba(210, 74, 98, 0.24);
   box-shadow: 0 20px 60px rgba(210, 74, 98, 0.18);
@@ -3162,6 +3201,30 @@
 
 /* Large portrait displays, such as 50-65 inch kiosk screens. */
 @media (orientation: portrait) and (min-width: 600px) and (min-height: 900px) {
+  .captureConfirmCard {
+    width: min(620px, 88vw);
+    padding: 30px;
+    gap: 18px;
+  }
+
+  .captureConfirmCard .modalTitle {
+    font-size: 28px;
+  }
+
+  .captureConfirmCard .modalSub {
+    font-size: 18px;
+  }
+
+  .captureConfirmCard .modalPreview {
+    width: min(340px, 100%);
+  }
+
+  .captureConfirmCard .btn {
+    min-width: 170px;
+    padding: 16px 26px;
+    font-size: 18px;
+  }
+
   .costumeCard {
     width: min(88vw, 860px);
   }

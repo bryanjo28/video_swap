@@ -1139,7 +1139,7 @@ export default function App() {
       {showCaptureModal ? (
         <div className="modalOverlay">
           <div
-            className={`modalCard ${
+            className={`modalCard captureConfirmCard ${
               captureResultStatus === "error" ? "modalCardError" : ""
             }`}
           >
