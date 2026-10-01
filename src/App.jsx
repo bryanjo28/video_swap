@@ -966,9 +966,7 @@ export default function App() {
                 }
                 disabled={costumePageIndex === 0}
                 aria-label="Previous costume page"
-              >
-                &lt;
-              </button>
+              />
               <div className="costumeGrid">
                 {visibleCostumes.map((item, index) => (
                   <button
@@ -995,9 +993,7 @@ export default function App() {
                 }
                 disabled={costumePageIndex >= totalCostumePages - 1}
                 aria-label="Next costume page"
-              >
-                &gt;
-              </button>
+              />
             </div>
           ) : (
             <div className="costumeEmpty">

@@ -740,7 +740,9 @@
 .costumeGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  min-height: 410px;
 }
 
 .costumeSelector {
@@ -753,15 +755,32 @@
 .costumeArrow {
   width: 44px;
   height: 44px;
+  padding: 0;
   border-radius: 999px;
   border: 1px solid rgba(152, 227, 255, 0.55);
   background: rgba(8, 78, 145, 0.58);
   color: #ffffff;
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1;
+  display: grid;
+  place-items: center;
+  align-self: center;
   cursor: pointer;
   transition: transform 0.12s ease, opacity 0.2s ease;
+}
+
+.costumeArrow::before {
+  content: "";
+  width: 11px;
+  height: 11px;
+  border-top: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+.costumeSelector > .costumeArrow:first-child::before {
+  transform: translateX(2px) rotate(-135deg);
+}
+
+.costumeSelector > .costumeArrow:last-child::before {
+  transform: translateX(-2px) rotate(45deg);
 }
 
 .costumeArrow:active {
@@ -829,8 +848,14 @@
 .costumeName {
   margin-top: 8px;
   font-size: 14px;
+  line-height: 1.3;
   font-weight: 700;
   color: rgba(245, 251, 255, 0.95);
+  display: -webkit-box;
+  min-height: 2.6em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .costumeEmpty {
@@ -864,9 +889,11 @@
 }
 
 .costumeActionsRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  justify-content: center;
+  width: min(100%, 420px);
+  margin-inline: auto;
 }
 
 .costumeBack,
@@ -874,7 +901,8 @@
   border: 1px solid rgba(152, 227, 255, 0.55);
   border-radius: 999px;
   padding: 11px 16px;
-  min-width: 120px;
+  width: 100%;
+  min-width: 0;
   font-size: 15px;
   font-weight: 800;
   cursor: pointer;
@@ -899,6 +927,10 @@
 }
 
 .costumePager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.5em;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.3px;
@@ -2478,14 +2510,18 @@
   .costumeArrow {
     width: 38px;
     height: 38px;
-    font-size: 18px;
   }
 
   .costumeImage {
     height: 130px;
   }
 
+  .costumeGrid {
+    min-height: 354px;
+  }
+
   .costumeActionsRow {
+    display: flex;
     flex-direction: column;
   }
 
@@ -2767,7 +2803,7 @@
   }
 
   .costumeTitle {
-    font-size: 48px;
+    font-size: 43px;
     line-height: 1.14;
   }
 
@@ -2776,7 +2812,7 @@
   .costumeEmpty,
   .costumeInlineError,
   .costumePager {
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1.6;
   }
 
@@ -2794,11 +2830,17 @@
   .costumeArrow {
     width: 58px;
     height: 58px;
-    font-size: 28px;
+  }
+
+  .costumeArrow::before {
+    width: 14px;
+    height: 14px;
+    border-width: 4px 4px 0 0;
   }
 
   .costumeGrid {
     gap: 18px;
+    min-height: 614px;
   }
 
   .costumeItem {
@@ -2813,7 +2855,7 @@
 
   .costumeName {
     margin-top: 12px;
-    font-size: 22px;
+    font-size: 19px;
     line-height: 1.35;
   }
 
@@ -2823,9 +2865,8 @@
 
   .costumeBack,
   .costumeNext {
-    min-width: 190px;
     padding: 16px 24px;
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .processSuccessCard {
@@ -3126,27 +3167,29 @@
   }
 
   .costumeTitle {
-    font-size: 54px;
+    font-size: 46px;
   }
 
   .costumeImage {
     height: 280px;
   }
 
+  .costumeGrid {
+    min-height: 710px;
+  }
+
   .costumeName {
-    font-size: 24px;
+    font-size: 20px;
   }
 
   .costumeArrow {
     width: 64px;
     height: 64px;
-    font-size: 30px;
   }
 
   .costumeBack,
   .costumeNext {
-    min-width: 210px;
-    font-size: 22px;
+    font-size: 19px;
   }
 
   .previewHeader {
