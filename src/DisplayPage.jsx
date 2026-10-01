@@ -40,7 +40,7 @@ const toMediaUrl = (path) => {
 
 const toDisplayName = (value) =>
   String(value || "")
-    .replace(/[-_]+/g, " ")
+    .replace(/_+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
