@@ -1463,6 +1463,17 @@
   box-shadow: 0 20px 60px rgba(210, 74, 98, 0.18);
 }
 
+.captureConfirmCard.modalCardError .modalActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+}
+
+.captureConfirmCard.modalCardError .modalActions .btn {
+  width: 100%;
+  max-width: none;
+}
+
 .modalLoadingCard {
   width: min(360px, 90vw);
   padding: 24px 20px;
@@ -3301,5 +3312,39 @@
 
   .processingSub {
     font-size: 20px;
+  }
+}
+
+/* Keep the capture confirmation physically consistent when kiosk browsers use 80% zoom. */
+@media (orientation: portrait) and (min-width: 900px) and (min-height: 1200px) {
+  .captureConfirmCard {
+    width: min(69vw, 39dvh);
+    max-height: 92dvh;
+    padding: min(3.35vw, 1.9dvh);
+    gap: min(2vw, 1.15dvh);
+  }
+
+  .captureConfirmCard .modalTitle {
+    font-size: min(3.15vw, 1.8dvh);
+  }
+
+  .captureConfirmCard .modalSub {
+    font-size: min(2vw, 1.15dvh);
+  }
+
+  .captureConfirmCard .modalMeta,
+  .captureConfirmCard .modalError {
+    font-size: min(1.65vw, 0.95dvh);
+  }
+
+  .captureConfirmCard .modalPreview {
+    width: min(38vw, 21.5dvh);
+    max-height: 58dvh;
+  }
+
+  .captureConfirmCard .btn {
+    min-width: min(19vw, 10.7dvh);
+    padding: min(1.8vw, 1dvh) min(2.9vw, 1.65dvh);
+    font-size: min(2vw, 1.15dvh);
   }
 }
