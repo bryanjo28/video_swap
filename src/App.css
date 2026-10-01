@@ -1449,11 +1449,15 @@
 }
 
 .captureConfirmCard .modalActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
   gap: 14px;
 }
 
 .captureConfirmCard .btn {
-  min-width: 140px;
+  width: 100%;
+  min-width: 0;
   padding: 14px 22px;
   font-size: 16px;
 }
@@ -3231,7 +3235,6 @@
   }
 
   .captureConfirmCard .btn {
-    min-width: 170px;
     padding: 16px 26px;
     font-size: 18px;
   }
@@ -3297,6 +3300,10 @@
     border-radius: 0;
   }
 
+  .previewPageDone .previewVideoTitle {
+    font-size: clamp(48px, 5.5vw, 72px);
+  }
+
   .processingCard {
     width: min(90vw, 880px);
   }
@@ -3343,8 +3350,14 @@
   }
 
   .captureConfirmCard .btn {
-    min-width: min(19vw, 10.7dvh);
     padding: min(1.8vw, 1dvh) min(2.9vw, 1.65dvh);
     font-size: min(2vw, 1.15dvh);
+  }
+}
+
+/* Stack the actions only when two readable columns no longer fit. */
+@media (max-width: 380px) {
+  .captureConfirmCard .modalActions {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
